@@ -2,6 +2,9 @@ Seedlink_plotter
 
 A python script to plot real time seismic data from a seedlink server
 
+This version works with Obspy dev version (26/03/2013)
+If you have 0.8.3, you should change linewidth to line_width
+
 On some linux box, the time zone must be set to UTC and not GMT
 
 Usage examples:
