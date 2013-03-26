@@ -1,0 +1,19 @@
+Seedlink_plotter
+
+A python script to plot real time seismic data from a seedlink server
+
+On some linux box, the time zone must be set to UTC and not GMT
+
+Usage examples:
+./seedlink_plotter.py -s FDF -n G -c BHZ -l 00 --x_position 200 --y_position 50 --x_size 800 --y_size 600 -b 24 --scale 20000 --seedlink_server "rtserver.ipgp.fr:18000" --with_decoration --rainbow --x_scale 60 
+
+./seedlink_plotter.py -s SSB -n G -c BHZ -l 00 --x_position 200 --y_position 50 --x_size 800 --y_size 600 -b 24 --scale 20000 --seedlink_server "rtserver.ipgp.fr:18000" --with_decoration --rainbow --x_scale 60 --nb_rainbow_colors 15
+
+
+modules to install:
+progressbar
+Obspy
+matplolib
+scipy
+numpy
+argparse
