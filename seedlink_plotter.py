@@ -11,10 +11,8 @@ from obspy.seedlink.slclient import SLClient
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
 from obspy.core import UTCDateTime
-# import argparse
 from argparse import ArgumentParser
 from math import sin
-
 from progressbar import BouncingBar, FormatLabel, ProgressBar, RotatingMarker
 
 
@@ -27,7 +25,6 @@ class Seedlink_plotter(SLClient):
 
         # Set the log level to display minimal info
         super(Seedlink_plotter, self).__init__(loglevel='CRITICAL')
-#         super(Seedlink_plotter, self).__init__()
         self.figure = figure
         self.stream = Stream()
         self.interval = interval
@@ -39,13 +36,22 @@ class Seedlink_plotter(SLClient):
         self.initial_update_rate = 800
         self.update_rate = 2
         # Plot after geting the penultimate line of data
-        self.print_percentage = (
-            self.backtrace-60.0*self.interval)/self.backtrace
         self.print_max = (self.backtrace-60.0*self.interval)
         widgets = [FormatLabel('Receiving Data: - '), BouncingBar(
             marker=RotatingMarker())]
         self.pbar = ProgressBar(maxval=self.print_max, widgets=widgets).start()
-#         print "max "+ str(self.print_max)
+
+        # Colors
+        if args.rainbow:
+            # Rainbow colors !
+            self.color = self.rainbow_color_generator(
+                int(args.nb_rainbow_colors))
+        else:
+            # Regular colors
+            self.color = ('#000000', '#ff0000', '#0000ff', '#56a83c')
+
+        # With this upscale factor the graph  look nice !
+        self.upscale_factor = 30
 
         # converter for the colors gradient
     def rgb_to_hex(self, r, g, b):
@@ -74,23 +80,14 @@ class Seedlink_plotter(SLClient):
 #         self.local_stream.filter('bandpass', freqmin=0.001, freqmax=0.5,corners=2, zerophase=True)
         #######################################################################
 
-        # With this upscale factor the graph  look nice !
-        upscale_factor = 30
-
-        if args.rainbow:
-            # Rainbow colors !
-            self.color = self.rainbow_color_generator(
-                int(args.nb_rainbow_colors))
-        else:
-            # Regular colors
-            self.color = ('#000000', '#ff0000', '#0000ff', '#56a83c')
-
         self.local_stream.plot(
             fig=self.figure, type='dayplot', interval=self.interval,
             number_of_ticks=13, tick_format='%d/%m %Hh',
-            size=(args.x_size * upscale_factor, args.y_size * upscale_factor),
-            x_labels_size=8,
-            y_labels_size=8, title=self.title, title_size=14, linewidth=0.5, right_vertical_labels=False,
+            size=(args.x_size * self.upscale_factor,
+                  args.y_size * self.upscale_factor),
+            x_labels_size=8, y_labels_size=8,
+            title=self.title, title_size=14,
+            linewidth=0.5, right_vertical_labels=False,
             vertical_scaling_range=self.scale,
             subplots_adjust_left=0.03, subplots_adjust_right=0.99,
             subplots_adjust_top=0.95, subplots_adjust_bottom=0.1,
@@ -155,30 +152,20 @@ class Seedlink_plotter(SLClient):
         stream_time_length = self.stream.traces[
             0].stats.endtime - self.stream.traces[0].stats.starttime
 
-        ### Before we reach  print_percentage of the time data to plot, we plot each initial_update_rate we received
-#         if (stream_time_length < (self.backtrace*self.print_percentage)):
-#        if ((stream_time_length))<(self.backtrace-60.0*self.interval):
-#         print str(stream_time_length)+"/"+str(self.print_max)
+        # Before we reach  print_max  we plot each initial_update_rate we
+        # received
         if stream_time_length <= self.print_max:
-
             self.flip += 1
+            self.pbar.update(stream_time_length)
 
-#             if ((stream_time_length))<(self.backtrace-60.0*self.interval):
-            self.pbar.update(stream_time_length+1)
-#             print str(stream_time_length)+"/"+str(self.print_max)
             if (self.flip > self.initial_update_rate):
                 self.flip = 0
                 self.figure.clear()
                 self.plot_graph()
 
- #             self.pbar.finish()
-
         # Real time plotting
         # We plot each update_rate packet we received
-        # if (stream_time_length >= (self.backtrace*self.print_percentage)):
         if ((stream_time_length)) > (self.print_max):
-#             print str(stream_time_length)+"/"+str(self.print_max)
-
             self.flip += 1
             if (self.flip > self.update_rate):
                 self.figure.clear()
@@ -189,8 +176,8 @@ class Seedlink_plotter(SLClient):
 
 if __name__ == '__main__':
 
-    parser = ArgumentParser(prog='seedlink_plotter', 
-        description='Plot a realtime seismogram drum of a station')
+    parser = ArgumentParser(prog='seedlink_plotter',
+                            description='Plot a realtime seismogram drum of a station')
 
     parser.add_argument('-s', '--station_name', type=str,
                         help='the name of the station to plot', required=True)
