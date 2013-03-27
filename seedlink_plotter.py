@@ -50,9 +50,6 @@ class Seedlink_plotter(SLClient):
             # Regular colors
             self.color = ('#000000', '#ff0000', '#0000ff', '#56a83c')
 
-        # With this upscale factor the graph  look nice !
-        self.upscale_factor = 30
-
         # converter for the colors gradient
     def rgb_to_hex(self, r, g, b):
         return '#%02X%02X%02X' % (r, g, b)
@@ -83,8 +80,7 @@ class Seedlink_plotter(SLClient):
         self.local_stream.plot(
             fig=self.figure, type='dayplot', interval=self.interval,
             number_of_ticks=13, tick_format='%d/%m %Hh',
-            size=(args.x_size * self.upscale_factor,
-                  args.y_size * self.upscale_factor),
+            size=(args.x_size, args.y_size ),
             x_labels_size=8, y_labels_size=8,
             title=self.title, title_size=14,
             linewidth=0.5, right_vertical_labels=False,
