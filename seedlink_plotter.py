@@ -21,9 +21,10 @@ class SeedlinkPlotter(Tkinter.Tk):
     """
     This module plots realtime seismic data from a Seedlink server
     """
-    def __init__(self, stream=None, myargs=None, *args, **kwargs):
+    def __init__(self, stream=None, myargs=None, lock=None, *args, **kwargs):
         Tkinter.Tk.__init__(self, *args, **kwargs)
         args = myargs
+        self.lock = lock
         ### size and position
         self.geometry(str(args.x_size)+'x'+str(args.y_size)+'+'+str(
             args.x_position)+'+'+str(args.y_position))
@@ -65,7 +66,8 @@ class SeedlinkPlotter(Tkinter.Tk):
         self.plot_graph()
 
     def plot_graph(self):
-        stream = self.stream.copy()
+        with self.lock:
+            stream = self.stream.copy()
         try:
             title = stream[0].id + ' scale: '+str(self.scale) + " - non filtre"
             self.figure.clear()
@@ -106,10 +108,11 @@ class SeedlinkPlotter(Tkinter.Tk):
 
 
 class SeedlinkUpdater(SLClient):
-    def __init__(self, stream, myargs=None):
+    def __init__(self, stream, myargs=None, lock=None):
         # Set the log level to display minimal info
         super(SeedlinkUpdater, self).__init__(loglevel='CRITICAL')
         self.stream = stream
+        self.lock = lock
 
     def packetHandler(self, count, slpack):
         """
@@ -147,8 +150,9 @@ class SeedlinkUpdater(SLClient):
             return False
 
         # new samples add to the main stream
-        self.stream += trace
-        self.stream.merge()
+        with self.lock:
+            self.stream += trace
+            self.stream.merge()
 
         # XXX now = UTCDateTime()
 
@@ -235,10 +239,11 @@ if __name__ == '__main__':
 
     # main window
     stream = Stream()
-    master = SeedlinkPlotter(stream=stream, myargs=args)
+    lock = threading.Lock()
+    master = SeedlinkPlotter(stream=stream, myargs=args, lock=lock)
 
     # cl is the seedlink client
-    cl = SeedlinkUpdater(stream, myargs=args)
+    cl = SeedlinkUpdater(stream, myargs=args, lock=lock)
     cl.parseCmdLineArgs(["", "-S", str(args.network_code)+'_'+str(args.station_name)+':'+str(
         args.location_id)+str(args.channel), "-t", round_start, args.seedlink_server])
     cl.initialize()
