@@ -243,6 +243,7 @@ if __name__ == '__main__':
         args.location_id)+str(args.channel), "-t", round_start, args.seedlink_server])
     cl.initialize()
     thread = threading.Thread(target=cl.run)
+    thread.setDaemon(True)
     thread.start()
 
     master.mainloop()
