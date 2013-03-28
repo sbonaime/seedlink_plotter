@@ -14,21 +14,32 @@ from obspy.core import UTCDateTime
 from argparse import ArgumentParser
 from math import sin
 from progressbar import BouncingBar, FormatLabel, ProgressBar, RotatingMarker
+import threading
 
 
-class Seedlink_plotter(SLClient):
+class SeedlinkPlotter(Tkinter.Tk):
     """
     This module plots realtime seismic data from a Seedlink server
     """
+    def __init__(self, stream=None, myargs=None, *args, **kwargs):
+        Tkinter.Tk.__init__(self, *args, **kwargs)
+        args = myargs
+        ### size and position
+        self.geometry(str(args.x_size)+'x'+str(args.y_size)+'+'+str(
+            args.x_position)+'+'+str(args.y_position))
+        # hide the window decoration
+        if not args.with_decoration:
+            self.wm_overrideredirect(True)
 
-    def __init__(self, figure, canvas, interval, backtrace, args):
+        # main figure
+        self.figure = Figure()
+        canvas = FigureCanvasTkAgg(self.figure, master=self)
 
-        # Set the log level to display minimal info
-        super(Seedlink_plotter, self).__init__(loglevel='CRITICAL')
-        self.figure = figure
-        self.stream = Stream()
-        self.interval = interval
-        self.backtrace = backtrace
+        canvas.show()
+        canvas.get_tk_widget().pack(fill=Tkinter.BOTH, expand=1)
+
+        self.interval = args.x_scale
+        self.backtrace = args.backtrace_time
         self.canvas = canvas
         self.flip = 0
         self.scale = args.scale
@@ -50,7 +61,33 @@ class Seedlink_plotter(SLClient):
             # Regular colors
             self.color = ('#000000', '#ff0000', '#0000ff', '#56a83c')
 
-        # converter for the colors gradient
+        self.stream = stream
+        self.plot_graph()
+
+    def plot_graph(self):
+        stream = self.stream.copy()
+        try:
+            title = stream[0].id + ' scale: '+str(self.scale) + " - non filtre"
+            self.figure.clear()
+            stream.plot(
+                fig=self.figure, type='dayplot', interval=self.args.x_scale,
+                number_of_ticks=13, tick_format='%d/%m %Hh',
+                size=(self.args.x_size, self.args.y_size),
+                x_labels_size=8, y_labels_size=8,
+                title=title, title_size=14,
+                linewidth=0.5, right_vertical_labels=False,
+                vertical_scaling_range=self.args.scale,
+                subplots_adjust_left=0.03, subplots_adjust_right=0.99,
+                subplots_adjust_top=0.95, subplots_adjust_bottom=0.1,
+                one_tick_per_line=True,
+                # noir  Rouge bleu vert
+                color=self.color,
+                show_y_UTC_label=False)
+        except:
+            pass
+        self.after(3000, self.plot_graph)
+
+    # converter for the colors gradient
     def rgb_to_hex(self, r, g, b):
         return '#%02X%02X%02X' % (r, g, b)
 
@@ -67,30 +104,12 @@ class Seedlink_plotter(SLClient):
 
         return tuple(color_list)
 
-    def plot_graph(self):
 
-        #######################################################################
-        # filter section
-        #######################################################################
-        self.local_stream = self.stream.copy()
-        # Filter example
-#         self.local_stream.filter('bandpass', freqmin=0.001, freqmax=0.5,corners=2, zerophase=True)
-        #######################################################################
-
-        self.local_stream.plot(
-            fig=self.figure, type='dayplot', interval=self.interval,
-            number_of_ticks=13, tick_format='%d/%m %Hh',
-            size=(args.x_size, args.y_size ),
-            x_labels_size=8, y_labels_size=8,
-            title=self.title, title_size=14,
-            linewidth=0.5, right_vertical_labels=False,
-            vertical_scaling_range=self.scale,
-            subplots_adjust_left=0.03, subplots_adjust_right=0.99,
-            subplots_adjust_top=0.95, subplots_adjust_bottom=0.1,
-            one_tick_per_line=True,
-            # noir  Rouge bleu vert
-            color = self.color,
-            show_y_UTC_label=False)
+class SeedlinkUpdater(SLClient):
+    def __init__(self, stream, myargs=None):
+        # Set the log level to display minimal info
+        super(SeedlinkUpdater, self).__init__(loglevel='CRITICAL')
+        self.stream = stream
 
     def packetHandler(self, count, slpack):
         """
@@ -131,42 +150,38 @@ class Seedlink_plotter(SLClient):
         self.stream += trace
         self.stream.merge()
 
-        now = UTCDateTime()
+        # XXX now = UTCDateTime()
 
-        # Stop time will be the next round date
-        stop_time = UTCDateTime(
-            now.year, now.month, now.day, now.hour, 0, 0)+3600
-        start_time = stop_time-self.backtrace
+        # XXX # Stop time will be the next round date
+        # XXX stop_time = UTCDateTime(
+        # XXX     now.year, now.month, now.day, now.hour, 0, 0)+3600
+        # XXX start_time = stop_time-self.backtrace
 
-        # Limit the stream size
-        self.stream = self.stream.slice(start_time, stop_time)
-        self.stream.trim(start_time, stop_time)
+        # XXX # Limit the stream size
+        # XXX self.stream.trim(start_time, stop_time)
 
-        self.title = self.stream.traces[0].stats.station+" "+self.stream.traces[0].stats.network+" "+self.stream.traces[
-            0].stats.location+" "+self.stream.traces[0].stats.channel+' scale: '+str(self.scale) + " - non filtre"
+        # XXX stream_time_length = self.stream.traces[
+        # XXX     0].stats.endtime - self.stream.traces[0].stats.starttime
 
-        stream_time_length = self.stream.traces[
-            0].stats.endtime - self.stream.traces[0].stats.starttime
+        # XXX # Before we reach  print_max  we plot each initial_update_rate we
+        # XXX # received
+        # XXX if stream_time_length <= self.print_max:
+        # XXX     self.flip += 1
+        # XXX     self.pbar.update(stream_time_length)
 
-        # Before we reach  print_max  we plot each initial_update_rate we
-        # received
-        if stream_time_length <= self.print_max:
-            self.flip += 1
-            self.pbar.update(stream_time_length)
+        # XXX     if (self.flip > self.initial_update_rate):
+        # XXX         self.flip = 0
+        # XXX         #self.figure.clear()
+        # XXX         self.plot_graph()
 
-            if (self.flip > self.initial_update_rate):
-                self.flip = 0
-                self.figure.clear()
-                self.plot_graph()
-
-        # Real time plotting
-        # We plot each update_rate packet we received
-        if ((stream_time_length)) > (self.print_max):
-            self.flip += 1
-            if (self.flip > self.update_rate):
-                self.figure.clear()
-                self.plot_graph()
-                self.flip = 0
+        # XXX # Real time plotting
+        # XXX # We plot each update_rate packet we received
+        # XXX if ((stream_time_length)) > (self.print_max):
+        # XXX     self.flip += 1
+        # XXX     if (self.flip > self.update_rate):
+        # XXX         #self.figure.clear()
+        # XXX         self.plot_graph()
+        # XXX         self.flip = 0
 
         return False
 
@@ -211,38 +226,23 @@ if __name__ == '__main__':
     # parse the arguments
     args = parser.parse_args()
 
-    # main window
-    master = Tkinter.Tk()
-
-    ### size and position
-    master.geometry(str(args.x_size)+'x'+str(args.y_size)+'+'+str(
-        args.x_position)+'+'+str(args.y_position))
-
     # backtrace is now in second
-    backtrace = 3600*args.backtrace_time
-
-    # hide the window decoration
-    if not args.with_decoration:
-        master.wm_overrideredirect(True)
-
-    # main figure
-    main_figure = Figure()
-    canvas = FigureCanvasTkAgg(main_figure, master=master)
-
-    canvas.show()
-    canvas.get_tk_widget().pack(fill=Tkinter.BOTH, expand=1)
+    args.backtrace_time = 3600 * args.backtrace_time
 
     now = UTCDateTime()
-    round_end = UTCDateTime(now.year, now.month, now.day, now.hour + 1, 0, 0)
-    round_start = round_end-backtrace
+    round_end = now + 3600
+    round_start = round_end - args.backtrace_time
+
+    # main window
+    stream = Stream()
+    master = SeedlinkPlotter(stream=stream, myargs=args)
 
     # cl is the seedlink client
-    cl = Seedlink_plotter(main_figure, canvas=canvas,
-                          interval=args.x_scale, backtrace=backtrace, args=args)
+    cl = SeedlinkUpdater(stream, myargs=args)
     cl.parseCmdLineArgs(["", "-S", str(args.network_code)+'_'+str(args.station_name)+':'+str(
         args.location_id)+str(args.channel), "-t", round_start, args.seedlink_server])
-
     cl.initialize()
+    thread = threading.Thread(target=cl.run)
+    thread.start()
 
-    master.after(1, cl.run)
     master.mainloop()
