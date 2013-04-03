@@ -61,7 +61,7 @@ class SeedlinkPlotter(Tkinter.Tk):
         with self.lock:
             stream = self.stream.copy()
         try:
-            title = stream[0].id + ' scale: '+str(self.scale) + " - non filtre megies"
+            title = stream[0].id + ' scale: '+str(self.scale) + " - non filtre"
             self.figure.clear()
             stream.plot(
                 fig=self.figure, type='dayplot', interval=self.args.x_scale,
@@ -143,12 +143,11 @@ class SeedlinkUpdater(SLClient):
             return False
 
         #limit the length of main stream buffer
-        # Stop time will be the next round date
         now = UTCDateTime()
         stop_time = UTCDateTime(now.year, now.month, now.day, now.hour, 0, 0)+3600
         start_time = stop_time-args.backtrace_time
 
-        # new samples add to the main stream which is then trim
+        # new samples add to the main stream which is then trimmed
         with self.lock:
             self.stream += trace
             self.stream.merge()
