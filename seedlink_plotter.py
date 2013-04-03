@@ -79,7 +79,7 @@ class SeedlinkPlotter(Tkinter.Tk):
                 show_y_UTC_label=False)
         except:
             pass
-        self.after(args.update_time*1000, self.plot_graph)
+        self.after(int(self.args.update_time*1000), self.plot_graph)
 
     # converter for the colors gradient
     def rgb_to_hex(self, r, g, b):
@@ -192,7 +192,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '--nb_rainbow_colors', help='numbers of colors for rainbow mode', required=False, default=10)
     parser.add_argument(
-        '--update_time', help='time in seconds between each graphic update', required=False, default=1)
+        '--update_time', help='time in seconds between each graphic update', required=False, default=1, type=float)
     # parse the arguments
     args = parser.parse_args()
 
