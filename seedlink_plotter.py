@@ -151,7 +151,7 @@ class SeedlinkUpdater(SLClient):
         with self.lock:
             self.stream += trace
             self.stream.merge()
-            self.stream.trim(start_time, stop_time)
+            self.stream.trim(start_time, stop_time, nearest_sample=False)
         return False
 
 if __name__ == '__main__':
@@ -192,13 +192,14 @@ if __name__ == '__main__':
     parser.add_argument(
         '--nb_rainbow_colors', help='numbers of colors for rainbow mode', required=False, default=10)
     parser.add_argument(
-        '--update_time', help='time in seconds between each graphic update', required=False, default=2)
+        '--update_time', help='time in seconds between each graphic update', required=False, default=1)
     # parse the arguments
     args = parser.parse_args()
 
     # backtrace is now in second
     args.backtrace_time = 3600 * args.backtrace_time
-
+    
+    
     now = UTCDateTime()
     round_end = UTCDateTime(now.year, now.month, now.day, now.hour + 1, 0, 0)
     round_start = round_end-args.backtrace_time
