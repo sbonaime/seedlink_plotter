@@ -14,7 +14,6 @@ Usage examples:
 
 
 modules to install:
-progressbar (>= 2.3)
 ObsPy (>= https://github.com/obspy/obspy/tree/05597e4642)
 matplolib
 scipy
