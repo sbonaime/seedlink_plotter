@@ -13,7 +13,6 @@ from matplotlib.figure import Figure
 from obspy.core import UTCDateTime
 from argparse import ArgumentParser
 from math import sin
-from progressbar import BouncingBar, FormatLabel, ProgressBar, RotatingMarker
 import threading
 
 
@@ -42,16 +41,8 @@ class SeedlinkPlotter(Tkinter.Tk):
         self.interval = args.x_scale
         self.backtrace = args.backtrace_time
         self.canvas = canvas
-        self.flip = 0
         self.scale = args.scale
         self.args = args
-        self.initial_update_rate = 800
-        self.update_rate = 2
-        # Plot after geting the penultimate line of data
-        self.print_max = (self.backtrace-60.0*self.interval)
-        widgets = [FormatLabel('Receiving Data: - '), BouncingBar(
-            marker=RotatingMarker())]
-        self.pbar = ProgressBar(maxval=self.print_max, widgets=widgets).start()
 
         # Colors
         if args.rainbow:
@@ -66,10 +57,11 @@ class SeedlinkPlotter(Tkinter.Tk):
         self.plot_graph()
 
     def plot_graph(self):
+
         with self.lock:
             stream = self.stream.copy()
         try:
-            title = stream[0].id + ' scale: '+str(self.scale) + " - non filtre"
+            title = stream[0].id + ' scale: '+str(self.scale) + " - non filtre megies"
             self.figure.clear()
             stream.plot(
                 fig=self.figure, type='dayplot', interval=self.args.x_scale,
@@ -87,7 +79,7 @@ class SeedlinkPlotter(Tkinter.Tk):
                 show_y_UTC_label=False)
         except:
             pass
-        self.after(3000, self.plot_graph)
+        self.after(args.update_time*1000, self.plot_graph)
 
     # converter for the colors gradient
     def rgb_to_hex(self, r, g, b):
@@ -98,6 +90,7 @@ class SeedlinkPlotter(Tkinter.Tk):
         color_list = []
         frequency = 0.3
         for compteur_lignes in xrange(max_color):
+
             red = sin(frequency*compteur_lignes*2 + 0)*127+128
             green = sin(frequency*compteur_lignes*2 + 2)*127+128
             blue = sin(frequency*compteur_lignes*2 + 4)*127+128
@@ -149,44 +142,17 @@ class SeedlinkUpdater(SLClient):
             print self.__class__.__name__ + ": blockette contains no trace"
             return False
 
-        # new samples add to the main stream
+        #limit the length of main stream buffer
+        # Stop time will be the next round date
+        now = UTCDateTime()
+        stop_time = UTCDateTime(now.year, now.month, now.day, now.hour, 0, 0)+3600
+        start_time = stop_time-args.backtrace_time
+
+        # new samples add to the main stream which is then trim
         with self.lock:
             self.stream += trace
             self.stream.merge()
-
-        # XXX now = UTCDateTime()
-
-        # XXX # Stop time will be the next round date
-        # XXX stop_time = UTCDateTime(
-        # XXX     now.year, now.month, now.day, now.hour, 0, 0)+3600
-        # XXX start_time = stop_time-self.backtrace
-
-        # XXX # Limit the stream size
-        # XXX self.stream.trim(start_time, stop_time)
-
-        # XXX stream_time_length = self.stream.traces[
-        # XXX     0].stats.endtime - self.stream.traces[0].stats.starttime
-
-        # XXX # Before we reach  print_max  we plot each initial_update_rate we
-        # XXX # received
-        # XXX if stream_time_length <= self.print_max:
-        # XXX     self.flip += 1
-        # XXX     self.pbar.update(stream_time_length)
-
-        # XXX     if (self.flip > self.initial_update_rate):
-        # XXX         self.flip = 0
-        # XXX         #self.figure.clear()
-        # XXX         self.plot_graph()
-
-        # XXX # Real time plotting
-        # XXX # We plot each update_rate packet we received
-        # XXX if ((stream_time_length)) > (self.print_max):
-        # XXX     self.flip += 1
-        # XXX     if (self.flip > self.update_rate):
-        # XXX         #self.figure.clear()
-        # XXX         self.plot_graph()
-        # XXX         self.flip = 0
-
+            self.stream.trim(start_time, stop_time)
         return False
 
 if __name__ == '__main__':
@@ -226,7 +192,8 @@ if __name__ == '__main__':
         '--rainbow', help='', required=False, action='store_true')
     parser.add_argument(
         '--nb_rainbow_colors', help='numbers of colors for rainbow mode', required=False, default=10)
-
+    parser.add_argument(
+        '--update_time', help='time in seconds between each graphic update', required=False, default=2)
     # parse the arguments
     args = parser.parse_args()
 
@@ -234,8 +201,8 @@ if __name__ == '__main__':
     args.backtrace_time = 3600 * args.backtrace_time
 
     now = UTCDateTime()
-    round_end = now + 3600
-    round_start = round_end - args.backtrace_time
+    round_end = UTCDateTime(now.year, now.month, now.day, now.hour + 1, 0, 0)
+    round_start = round_end-args.backtrace_time
 
     # main window
     stream = Stream()
