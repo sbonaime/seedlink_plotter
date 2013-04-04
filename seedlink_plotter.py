@@ -246,7 +246,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '--nb_rainbow_colors', help='numbers of colors for rainbow mode', required=False, default=10)
     parser.add_argument(
-        '--update_time', help='time in seconds between each graphic update', required=False, default=1, type=float)
+        '--update_time', help='time in seconds between each graphic update', required=False, default=10, type=float)
     parser.add_argument('--events', required=False, default=None, type=float,
         help='plot events using obspy.neries, specify minimum magnitude')
     parser.add_argument('--events_update_time', required=False, default=10, type=float,
