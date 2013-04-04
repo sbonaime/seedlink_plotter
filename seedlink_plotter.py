@@ -11,16 +11,20 @@ from obspy.seedlink.slclient import SLClient
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
 from obspy.core import UTCDateTime
+from obspy.core.event import Catalog
+from obspy.neries import Client
 from argparse import ArgumentParser
 from math import sin
 import threading
+import time
+import warnings
 
 
 class SeedlinkPlotter(Tkinter.Tk):
     """
     This module plots realtime seismic data from a Seedlink server
     """
-    def __init__(self, stream=None, myargs=None, lock=None, *args, **kwargs):
+    def __init__(self, stream=None, events=None, myargs=None, lock=None, *args, **kwargs):
         Tkinter.Tk.__init__(self, *args, **kwargs)
         args = myargs
         self.lock = lock
@@ -43,6 +47,8 @@ class SeedlinkPlotter(Tkinter.Tk):
         self.canvas = canvas
         self.scale = args.scale
         self.args = args
+        self.stream = stream
+        self.events = events
 
         # Colors
         if args.rainbow:
@@ -53,7 +59,6 @@ class SeedlinkPlotter(Tkinter.Tk):
             # Regular colors
             self.color = ('#000000', '#ff0000', '#0000ff', '#56a83c')
 
-        self.stream = stream
         self.plot_graph()
 
     def plot_graph(self):
@@ -76,7 +81,8 @@ class SeedlinkPlotter(Tkinter.Tk):
                 one_tick_per_line=True,
                 # noir  Rouge bleu vert
                 color=self.color,
-                show_y_UTC_label=False)
+                show_y_UTC_label=False,
+                events=self.events)
         except:
             pass
         self.after(int(self.args.update_time*1000), self.plot_graph)
@@ -154,6 +160,54 @@ class SeedlinkUpdater(SLClient):
             self.stream.trim(start_time, stop_time, nearest_sample=False)
         return False
 
+
+class EventUpdater():
+    def __init__(self, stream, events, myargs=None, lock=None):
+        self.stream = stream
+        self.events = events
+        self.args = myargs
+        self.lock = lock
+        warn_msg = "The resource identifier already exists and points to " + \
+                   "another object. It will now point to the object " + \
+                   "referred to by the new resource identifier."
+        warnings.filterwarnings("ignore", warn_msg)
+
+    def run(self):
+        """
+        Endless execution to update events. Does not terminate, to be run in a
+        (daemon) thread.
+        """
+        while True:
+            # no stream, reschedule event update in 10 seconds
+            if not self.stream:
+                time.sleep(10)
+                continue
+            events = self.get_events()
+            self.update_events(events)
+            time.sleep(self.args.events_update_time * 60)
+
+    def get_events(self):
+        """
+        Method to fetch updated list of events to use in plot.
+        """
+        with self.lock:
+            start = self.stream[0].stats.starttime
+            end = self.stream[0].stats.endtime
+        c = Client()
+        events = c.getEvents(min_datetime=start, max_datetime=end,
+                             format="catalog",
+                             min_magnitude=self.args.events)
+        return events
+
+    def update_events(self, events):
+        """
+        Method to insert new events into list of events shared with the GUI.
+        """
+        with self.lock:
+            self.events.clear()
+            self.events.extend(events)
+
+
 if __name__ == '__main__':
 
     parser = ArgumentParser(prog='seedlink_plotter',
@@ -192,7 +246,11 @@ if __name__ == '__main__':
     parser.add_argument(
         '--nb_rainbow_colors', help='numbers of colors for rainbow mode', required=False, default=10)
     parser.add_argument(
-        '--update_time', help='time in seconds between each graphic update', required=False, default=10, type=float)
+        '--update_time', help='time in seconds between each graphic update', required=False, default=1, type=float)
+    parser.add_argument('--events', required=False, default=None, type=float,
+        help='plot events using obspy.neries, specify minimum magnitude')
+    parser.add_argument('--events_update_time', required=False, default=10, type=float,
+        help='time in minutes between each event data update')
     # parse the arguments
     args = parser.parse_args()
 
@@ -205,8 +263,9 @@ if __name__ == '__main__':
 
     # main window
     stream = Stream()
+    events = Catalog()
     lock = threading.Lock()
-    master = SeedlinkPlotter(stream=stream, myargs=args, lock=lock)
+    master = SeedlinkPlotter(stream=stream, events=events, myargs=args, lock=lock)
 
     # cl is the seedlink client
     cl = SeedlinkUpdater(stream, myargs=args, lock=lock)
@@ -216,5 +275,12 @@ if __name__ == '__main__':
     thread = threading.Thread(target=cl.run)
     thread.setDaemon(True)
     thread.start()
+
+    # start another thread for event updating if requested
+    if args.events is not None:
+        eu = EventUpdater(stream=stream, events=events, myargs=args, lock=lock)
+        thread = threading.Thread(target=eu.run)
+        thread.setDaemon(True)
+        thread.start()
 
     master.mainloop()
