@@ -187,10 +187,10 @@ class EventUpdater():
             try:
                 events = self.get_events()
             except URLError, e:
-                msg = "%s: %s" % (e.__class__.__name__, e)
+                msg = "%s: %s\n" % (e.__class__.__name__, e)
                 sys.stderr.write(msg)
             except Exception, e:
-                msg = "%s: %s" % (e.__class__.__name__, e)
+                msg = "%s: %s\n" % (e.__class__.__name__, e)
                 sys.stderr.write(msg)
             else:
                 self.update_events(events)
