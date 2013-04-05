@@ -18,7 +18,8 @@ from math import sin
 import threading
 import time
 import warnings
-from socket import timeout
+import sys
+from urllib2 import URLError
 
 
 class SeedlinkPlotter(Tkinter.Tk):
@@ -185,8 +186,12 @@ class EventUpdater():
                 continue
             try:
                 events = self.get_events()
-            except timeout, e:
-                warnings.warn("Event request timed out.")
+            except URLError, e:
+                msg = "%s: %s" % (e.__class__.__name__, e)
+                sys.stderr.write(msg)
+            except Exception, e:
+                msg = "%s: %s" % (e.__class__.__name__, e)
+                sys.stderr.write(msg)
             else:
                 self.update_events(events)
             time.sleep(self.args.events_update_time * 60)
