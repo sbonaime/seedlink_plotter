@@ -18,6 +18,7 @@ from math import sin
 import threading
 import time
 import warnings
+from socket import timeout
 
 
 class SeedlinkPlotter(Tkinter.Tk):
@@ -182,8 +183,12 @@ class EventUpdater():
             if not self.stream:
                 time.sleep(10)
                 continue
-            events = self.get_events()
-            self.update_events(events)
+            try:
+                events = self.get_events()
+            except timeout, e:
+                warnings.warn("Event request timed out.")
+            else:
+                self.update_events(events)
             time.sleep(self.args.events_update_time * 60)
 
     def get_events(self):
