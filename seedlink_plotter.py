@@ -232,7 +232,7 @@ if __name__ == '__main__':
     parser.add_argument('-c', '--channel', type=str,
                         help='the name of the channel to plot', required=True)
     parser.add_argument(
-        '--scale', type=int, help='the scale to apply on data ex:50000', required=False, default=1)
+        '--scale', type=int, help='the scale to apply on data ex:50000', required=False)
 
     # Real-time parameters
     parser.add_argument('--seedlink_server', type=str,
