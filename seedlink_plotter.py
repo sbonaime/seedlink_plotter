@@ -68,7 +68,12 @@ class SeedlinkPlotter(Tkinter.Tk):
         with self.lock:
             stream = self.stream.copy()
         try:
-            title = stream[0].id + ' scale: '+str(self.scale) + " - non filtre"
+            title = stream[0].id
+            if self.scale:
+                title +=  ' - scale: '+str(self.scale)+' -' 
+            else:
+                title += ' - autoscale -'
+            title += " without filtering"
             self.figure.clear()
             stream.plot(
                 fig=self.figure, type='dayplot', interval=self.args.x_scale,
@@ -268,7 +273,6 @@ if __name__ == '__main__':
     now = UTCDateTime()
     round_start = UTCDateTime(now.year, now.month, now.day, now.hour + 1, 0, 0) - args.backtrace_time
 
-    # main window
     stream = Stream()
     events = Catalog()
     lock = threading.Lock()
@@ -280,6 +284,7 @@ if __name__ == '__main__':
     cl.multiselect = (str(args.network_code)+'_'+str(args.station_name)+':'+str(args.location_id)+str(args.channel))
     cl.begin_time = (round_start).formatSeedLink()
     cl.initialize()
+    # start cl in a thread
     thread = threading.Thread(target=cl.run)
     thread.setDaemon(True)
     thread.start()
