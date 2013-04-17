@@ -81,7 +81,6 @@ class SeedlinkPlotter(Tkinter.Tk):
                 subplots_adjust_left=0.03, subplots_adjust_right=0.99,
                 subplots_adjust_top=0.95, subplots_adjust_bottom=0.1,
                 one_tick_per_line=True,
-                # noir  Rouge bleu vert
                 color=self.color,
                 show_y_UTC_label=False,
                 events=self.events)
@@ -90,8 +89,8 @@ class SeedlinkPlotter(Tkinter.Tk):
         self.after(int(self.args.update_time*1000), self.plot_graph)
 
     # converter for the colors gradient
-    def rgb_to_hex(self, r, g, b):
-        return '#%02X%02X%02X' % (r, g, b)
+    def rgb_to_hex(self, red_value, green_value, blue_value):
+        return '#%02X%02X%02X' % (red_value, green_value, blue_value)
 
         # Rainbow color generator
     def rainbow_color_generator(self, max_color):
@@ -103,7 +102,7 @@ class SeedlinkPlotter(Tkinter.Tk):
             green = sin(frequency*compteur_lignes*2 + 2)*127+128
             blue = sin(frequency*compteur_lignes*2 + 4)*127+128
 
-            color_list.append(self.rgb_to_hex(red, green, blue))
+            color_list.append(self.rgb_to_hex(red_value=red, green_value=green, blue_value=blue))
 
         return tuple(color_list)
 
@@ -201,8 +200,7 @@ class EventUpdater():
         Method to fetch updated list of events to use in plot.
         """
         with self.lock:
-            start = self.stream[0].stats.starttime
-            end = self.stream[0].stats.endtime
+            start, end = self.stream[0].stats.starttime, self.stream[0].stats.endtime
         c = Client()
         events = c.getEvents(min_datetime=start, max_datetime=end,
                              format="catalog",
@@ -258,9 +256,9 @@ if __name__ == '__main__':
     parser.add_argument(
         '--update_time', help='time in seconds between each graphic update', required=False, default=10, type=float)
     parser.add_argument('--events', required=False, default=None, type=float,
-        help='plot events using obspy.neries, specify minimum magnitude')
+                        help='plot events using obspy.neries, specify minimum magnitude')
     parser.add_argument('--events_update_time', required=False, default=10, type=float,
-        help='time in minutes between each event data update')
+                        help='time in minutes between each event data update')
     # parse the arguments
     args = parser.parse_args()
 
@@ -268,8 +266,7 @@ if __name__ == '__main__':
     args.backtrace_time = 3600 * args.backtrace_time
 
     now = UTCDateTime()
-    round_end = UTCDateTime(now.year, now.month, now.day, now.hour + 1, 0, 0)
-    round_start = round_end-args.backtrace_time
+    round_start = UTCDateTime(now.year, now.month, now.day, now.hour + 1, 0, 0) - args.backtrace_time
 
     # main window
     stream = Stream()
@@ -279,8 +276,9 @@ if __name__ == '__main__':
 
     # cl is the seedlink client
     cl = SeedlinkUpdater(stream, myargs=args, lock=lock)
-    cl.parseCmdLineArgs(["", "-S", str(args.network_code)+'_'+str(args.station_name)+':'+str(
-        args.location_id)+str(args.channel), "-t", round_start, args.seedlink_server])
+    cl.slconn.setSLAddress(args.seedlink_server)
+    cl.multiselect = (str(args.network_code)+'_'+str(args.station_name)+':'+str(args.location_id)+str(args.channel))
+    cl.begin_time = (round_start).formatSeedLink()
     cl.initialize()
     thread = threading.Thread(target=cl.run)
     thread.setDaemon(True)
