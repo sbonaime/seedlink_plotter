@@ -186,7 +186,7 @@ class EventUpdater():
         while True:
             # no stream, reschedule event update in 10 seconds
             if not self.stream:
-                time.sleep(10)
+                time.sleep(20)
                 continue
             try:
                 events = self.get_events()
