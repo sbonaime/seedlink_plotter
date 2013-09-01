@@ -240,7 +240,7 @@ def main():
                         help='the seedlink server to connect to with port. ex: rtserver.ipgp.fr:18000 ', required=True)
     parser.add_argument(
         '--x_scale', type=int, help='the number of minute to plot per line', default=60)
-    parser.add_argument('-b', '--backtrace_time', type=int,
+    parser.add_argument('-b', '--backtrace_time', type=float,
                         help='the number of hours to plot', required=True)
     parser.add_argument('--x_position', type=int,
                         help='the x position of the graph', required=False, default=0)
