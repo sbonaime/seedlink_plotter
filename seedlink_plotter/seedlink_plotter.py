@@ -10,6 +10,8 @@ from obspy.seedlink.slpacket import SLPacket
 from obspy.seedlink.slclient import SLClient
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
+from matplotlib.ticker import MaxNLocator
+import matplotlib.pyplot as plt
 from obspy.core import UTCDateTime
 from obspy.core.event import Catalog
 from obspy.neries import Client
@@ -39,6 +41,7 @@ class SeedlinkPlotter(Tkinter.Tk):
 
         # main figure
         self.figure = Figure()
+        self.figure.subplots_adjust(hspace=0)
         canvas = FigureCanvasTkAgg(self.figure, master=self)
 
         canvas.show()
@@ -73,30 +76,56 @@ class SeedlinkPlotter(Tkinter.Tk):
             self.stream.trim(starttime=start - 120, nearest_sample=False)
             stream = self.stream.copy()
         try:
-            title = stream[0].id
-            if self.scale:
-                title +=  ' - scale: '+str(self.scale)+' -' 
-            else:
-                title += ' - autoscale -'
-            title += " without filtering"
+            stream.sort()
+            stream.trim(starttime=start, endtime=now, pad=True,
+                        nearest_sample=False)
+            if not stream:
+                raise
             self.figure.clear()
-            stream.plot(
-                fig=self.figure, type='dayplot', interval=self.args.x_scale,
-                number_of_ticks=13, tick_format='%d/%m %Hh',
-                size=(self.args.x_size, self.args.y_size),
-                x_labels_size=8, y_labels_size=8,
-                title=title, title_size=14,
-                linewidth=0.5, right_vertical_labels=False,
-                vertical_scaling_range=self.args.scale,
-                subplots_adjust_left=0.03, subplots_adjust_right=0.99,
-                subplots_adjust_top=0.95, subplots_adjust_bottom=0.1,
-                one_tick_per_line=True,
-                color=self.color,
-                show_y_UTC_label=False,
-                events=self.events)
+            # singlechannel case
+            if len(stream) == 1:
+                self.singlechannel_plot(stream)
+            # multichannel case
+            else:
+                self.multichannel_plot(stream)
         except:
             pass
         self.after(int(self.args.update_time*1000), self.plot_graph)
+
+    def singlechannel_plot(self, stream):
+        title = stream[0].id
+        if self.scale:
+            title +=  ' - scale: '+str(self.scale)+' -' 
+        else:
+            title += ' - autoscale -'
+        title += " without filtering"
+        stream.plot(
+            fig=self.figure, type='dayplot', interval=self.args.x_scale,
+            number_of_ticks=13, tick_format='%d/%m %Hh',
+            size=(self.args.x_size, self.args.y_size),
+            x_labels_size=8, y_labels_size=8,
+            title=title, title_size=14,
+            linewidth=0.5, right_vertical_labels=False,
+            vertical_scaling_range=self.args.scale,
+            subplots_adjust_left=0.03, subplots_adjust_right=0.99,
+            subplots_adjust_top=0.95, subplots_adjust_bottom=0.1,
+            one_tick_per_line=True,
+            color=self.color,
+            show_y_UTC_label=False,
+            events=self.events)
+
+    def multichannel_plot(self, stream):
+        fig = self.figure
+        stream.plot(fig=fig, method="fast", draw=False, equal_scale=False,
+                    size=(self.args.x_size, self.args.y_size))
+        for ax in fig.axes:
+            if ax is not fig.axes[-1]:
+                plt.setp(ax.get_xticklabels(), visible=False)
+            locator = MaxNLocator(4)
+            ax.yaxis.set_major_locator(locator)
+            ax.yaxis.grid(False)
+            ax.grid(True, axis="x")
+        fig.canvas.draw()
 
     # converter for the colors gradient
     def rgb_to_hex(self, red_value, green_value, blue_value):
