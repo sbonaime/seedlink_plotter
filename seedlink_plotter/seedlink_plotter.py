@@ -118,6 +118,7 @@ class SeedlinkUpdater(SLClient):
         super(SeedlinkUpdater, self).__init__(loglevel='CRITICAL')
         self.stream = stream
         self.lock = lock
+        self.args = myargs
 
     def packetHandler(self, count, slpack):
         """
@@ -157,7 +158,7 @@ class SeedlinkUpdater(SLClient):
         #limit the length of main stream buffer
         now = UTCDateTime()
         stop_time = UTCDateTime(now.year, now.month, now.day, now.hour, 0, 0)+3600
-        start_time = stop_time-args.backtrace_time
+        start_time = stop_time-self.args.backtrace_time
 
         # new samples add to the main stream which is then trimmed
         with self.lock:
@@ -221,8 +222,7 @@ class EventUpdater():
             self.events.extend(events)
 
 
-if __name__ == '__main__':
-
+def main():
     parser = ArgumentParser(prog='seedlink_plotter',
                             description='Plot a realtime seismogram drum of a station')
 
@@ -297,3 +297,7 @@ if __name__ == '__main__':
         thread.start()
 
     master.mainloop()
+
+
+if __name__ == '__main__':
+    main()
