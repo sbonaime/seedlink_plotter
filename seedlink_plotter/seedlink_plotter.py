@@ -28,7 +28,7 @@ class SeedlinkPlotter(Tkinter.Tk):
     """
     This module plots realtime seismic data from a Seedlink server
     """
-    def __init__(self, stream=None, events=None, myargs=None, lock=None, *args, **kwargs):
+    def __init__(self, stream=None, events=None, myargs=None, lock=None, multichannel=False, *args, **kwargs):
         Tkinter.Tk.__init__(self, *args, **kwargs)
         args = myargs
         self.lock = lock
@@ -54,6 +54,7 @@ class SeedlinkPlotter(Tkinter.Tk):
         self.args = args
         self.stream = stream
         self.events = events
+        self.multichannel = multichannel
 
         # Colors
         if args.rainbow:
@@ -68,26 +69,31 @@ class SeedlinkPlotter(Tkinter.Tk):
 
     def plot_graph(self):
         now = UTCDateTime()
-        start = now - self.backtrace
 
         with self.lock:
             self.stream.merge()
             # leave some data left of our start for possible processing
-            self.stream.trim(starttime=start - 120, nearest_sample=False)
+            if self.multichannel:
+                start_time = now - self.backtrace
+                self.stream.trim(starttime=start_time - 120, nearest_sample=False)
+            else:
+                stop_time = UTCDateTime(now.year, now.month, now.day, now.hour, 0, 0)+3600
+                start_time = stop_time-self.args.backtrace_time
+                self.stream.trim(starttime=start_time, endtime=stop_time, nearest_sample=False)
             stream = self.stream.copy()
+
         try:
             stream.sort()
-            stream.trim(starttime=start, endtime=now, pad=True,
-                        nearest_sample=False)
+            if self.multichannel:
+                stream.trim(starttime=start_time, endtime=now, pad=True,
+                            nearest_sample=False)
             if not stream:
                 raise
             self.figure.clear()
-            # singlechannel case
-            if len(stream) == 1:
-                self.singlechannel_plot(stream)
-            # multichannel case
-            else:
+            if self.multichannel:
                 self.multichannel_plot(stream)
+            else:
+                self.singlechannel_plot(stream)
         except:
             pass
         self.after(int(self.args.update_time*1000), self.plot_graph)
@@ -253,14 +259,12 @@ def main():
     parser = ArgumentParser(prog='seedlink_plotter',
                             description='Plot a realtime seismogram drum of a station')
 
-    parser.add_argument('-s', '--station_name', type=str,
-                        help='the name of the station to plot', required=True)
-    parser.add_argument('-n', '--network_code', type=str,
-                        help='the name of the station to plot', required=True)
-    parser.add_argument('-l', '--location_id', type=str,
-                        help='the location id of the channel to plot', required=False, default='')
-    parser.add_argument('-c', '--channel', type=str,
-                        help='the name of the channel to plot', required=True)
+    parser.add_argument(
+        '-s', '--seedlink_streams', type=str, required=True,
+        help='The seedlink stream selector string. It has the format '
+             '"stream1[:selectors1],stream2[:selectors2],...", with "stream" '
+             'in network_station format, e.g. '
+             '"IU_KONO:BHE BHN,GE_WLF,MN_AQU:HH?.D".')
     parser.add_argument(
         '--scale', type=int, help='the scale to apply on data ex:50000', required=False)
 
@@ -298,18 +302,28 @@ def main():
     args.backtrace_time = 3600 * args.backtrace_time
 
     now = UTCDateTime()
-    round_start = UTCDateTime(now.year, now.month, now.day, now.hour + 1, 0, 0) - args.backtrace_time
+
+    if any([x in args.seedlink_streams for x in ", ?*"]):
+        multichannel = True
+    else:
+        multichannel = False
 
     stream = Stream()
     events = Catalog()
     lock = threading.Lock()
-    master = SeedlinkPlotter(stream=stream, events=events, myargs=args, lock=lock)
+    master = SeedlinkPlotter(stream=stream, events=events, myargs=args,
+                             lock=lock, multichannel=multichannel)
 
     # cl is the seedlink client
     cl = SeedlinkUpdater(stream, myargs=args, lock=lock)
     cl.slconn.setSLAddress(args.seedlink_server)
-    cl.multiselect = (str(args.network_code)+'_'+str(args.station_name)+':'+str(args.location_id)+str(args.channel))
-    cl.begin_time = (round_start).formatSeedLink()
+    cl.multiselect = args.seedlink_streams
+    if multichannel:
+        cl.begin_time = (now - args.backtrace_time).formatSeedLink()
+    else:
+        round_start = UTCDateTime(now.year, now.month, now.day, now.hour + 1,
+                                  0, 0) - args.backtrace_time
+        cl.begin_time = (round_start).formatSeedLink()
     cl.initialize()
     # start cl in a thread
     thread = threading.Thread(target=cl.run)
