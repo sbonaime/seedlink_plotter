@@ -263,8 +263,9 @@ def main():
         '-s', '--seedlink_streams', type=str, required=True,
         help='The seedlink stream selector string. It has the format '
              '"stream1[:selectors1],stream2[:selectors2],...", with "stream" '
-             'in network_station format, e.g. '
-             '"IU_KONO:BHE BHN,GE_WLF,MN_AQU:HH?.D".')
+             'in "NETWORK"_"STATION" format and "selector" a space separated '
+             'list of "LOCATION""CHANNEL", e.g. '
+             '"IU_KONO:BHE BHN,MN_AQU:HH?.D".')
     parser.add_argument(
         '--scale', type=int, help='the scale to apply on data ex:50000', required=False)
 

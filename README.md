@@ -13,9 +13,14 @@ On some linux box, the time zone must be set to UTC and not GMT
 
 ### Usage examples
 
-    seedlink-plotter -s FDF -n G -c BHZ -l 00 --x_position 200 --y_position 50 --x_size 800 --y_size 600 -b 24 --scale 20000 --seedlink_server "rtserver.ipgp.fr:18000" --x_scale 60 
+Singlechannel plots (with longer time range):
 
-    seedlink-plotter -s SSB -n G -c BHZ -l 00 --x_position 200 --y_position 50 --x_size 800 --y_size 600 -b 24 --scale 20000 --seedlink_server "rtserver.ipgp.fr:18000" --with_decoration --rainbow --x_scale 60 --nb_rainbow_colors 15
+    seedlink-plotter -s "G_FDF:00BHZ" --x_position 200 --y_position 50 --x_size 800 --y_size 600 -b 24 --scale 20000 --seedlink_server "rtserver.ipgp.fr:18000" --x_scale 60
+    seedlink-plotter -s "G_SSB:00BHZ" --x_position 200 --y_position 50 --x_size 800 --y_size 600 -b 24 --scale 20000 --seedlink_server "rtserver.ipgp.fr:18000" --with_decoration --rainbow --x_scale 60 --nb_rainbow_colors 15
+
+Multichannel plots (with shorter time range):
+
+    seedlink-plotter -s "G_FDF:00BHZ,G_SSB:00BHZ" --x_position 200 --y_position 50 --x_size 800 --y_size 600 -b 0.5 --seedlink_server "rtserver.ipgp.fr:18000" --update_time 2
 
 ### Dependencies
  - Python 2.7
