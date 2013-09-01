@@ -64,8 +64,13 @@ class SeedlinkPlotter(Tkinter.Tk):
         self.plot_graph()
 
     def plot_graph(self):
+        now = UTCDateTime()
+        start = now - self.backtrace
 
         with self.lock:
+            self.stream.merge()
+            # leave some data left of our start for possible processing
+            self.stream.trim(starttime=start - 120, nearest_sample=False)
             stream = self.stream.copy()
         try:
             title = stream[0].id
@@ -155,16 +160,9 @@ class SeedlinkUpdater(SLClient):
             print self.__class__.__name__ + ": blockette contains no trace"
             return False
 
-        #limit the length of main stream buffer
-        now = UTCDateTime()
-        stop_time = UTCDateTime(now.year, now.month, now.day, now.hour, 0, 0)+3600
-        start_time = stop_time-self.args.backtrace_time
-
         # new samples add to the main stream which is then trimmed
         with self.lock:
             self.stream += trace
-            self.stream.merge()
-            self.stream.trim(start_time, stop_time, nearest_sample=False)
         return False
 
 
