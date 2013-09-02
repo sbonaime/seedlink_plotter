@@ -305,7 +305,8 @@ def main():
     args.backtrace_time = 3600 * args.backtrace_time
 
     now = UTCDateTime()
-    round_start = UTCDateTime(now.year, now.month, now.day, now.hour + 1, 0, 0) - args.backtrace_time
+    round_start = UTCDateTime(now.year, now.month, now.day, now.hour, 0, 0)
+    round_start = round_start + 3600 - args.backtrace_time
 
     stream = Stream()
     events = Catalog()
