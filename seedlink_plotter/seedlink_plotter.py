@@ -267,6 +267,18 @@ def main():
     # parse the arguments
     args = parser.parse_args()
 
+    # before anything else: warn user about window without decoration
+    if not args.with_decoration:
+        warning_ = "Warning: This is opening a window without decoration " \
+                   "that is not controlled via your Window Manager. " \
+                   "You can exit with <Ctrl>-C (as long as you do not " \
+                   "switch to another window with e.g. <Alt>-<Tab>).\n" \
+                   "Use option '--with-decoration' to open a normal window." \
+                   "\n\nType 'y' to continue.. "
+        if raw_input(warning_) != "y":
+            print "Aborting."
+            sys.exit()
+
     # backtrace is now in second
     args.backtrace_time = 3600 * args.backtrace_time
 
