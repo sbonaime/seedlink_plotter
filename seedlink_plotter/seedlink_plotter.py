@@ -33,14 +33,20 @@ class SeedlinkPlotter(Tkinter.Tk):
     """
     def __init__(self, stream=None, events=None, myargs=None, lock=None, multichannel=False, *args, **kwargs):
         Tkinter.Tk.__init__(self, *args, **kwargs)
+        self.focus_set()
+        self._bind_keys()
         args = myargs
         self.lock = lock
         ### size and position
         self.geometry(str(args.x_size)+'x'+str(args.y_size)+'+'+str(
             args.x_position)+'+'+str(args.y_position))
+        w, h, pad = self.winfo_screenwidth(), self.winfo_screenheight(), 3
+        self._geometry = ("%ix%i+0+0" % (w - pad, h - pad))
         # hide the window decoration
         if not args.with_decoration:
             self.wm_overrideredirect(True)
+        if args.fullscreen:
+            self._toggle_fullscreen(None)
 
         # main figure
         self.figure = Figure()
@@ -68,6 +74,19 @@ class SeedlinkPlotter(Tkinter.Tk):
             self.color = ('#000000', '#ff0000', '#0000ff', '#56a83c')
 
         self.plot_graph()
+
+    def _quit(self, event):
+        event.widget.quit()
+
+    def _bind_keys(self):
+        self.bind('<Escape>', self._quit)
+        self.bind('q', self._quit)
+        self.bind('f', self._toggle_fullscreen)
+
+    def _toggle_fullscreen(self, event):
+        g = self.geometry()
+        self.geometry(self._geometry)
+        self._geometry = g
 
     def plot_graph(self):
         now = UTCDateTime()
@@ -316,8 +335,23 @@ def main():
                         help='plot events using obspy.neries, specify minimum magnitude')
     parser.add_argument('--events_update_time', required=False, default=10, type=float,
                         help='time in minutes between each event data update')
+    parser.add_argument('-f', '--fullscreen', default=False,
+                        action="store_true",
+                        help='set to full screen on startup')
     # parse the arguments
     args = parser.parse_args()
+
+    # before anything else: warn user about window without decoration
+    if not args.with_decoration:
+        warning_ = "Warning: This is opening a window without decoration " \
+                   "that is not controlled via your Window Manager. " \
+                   "You can exit with <Ctrl>-C (as long as you do not " \
+                   "switch to another window with e.g. <Alt>-<Tab>).\n" \
+                   "Use option '--with-decoration' to open a normal window." \
+                   "\n\nType 'y' to continue.. "
+        if raw_input(warning_) != "y":
+            print "Aborting."
+            sys.exit()
 
     # backtrace is now in second
     args.backtrace_time = 3600 * args.backtrace_time
