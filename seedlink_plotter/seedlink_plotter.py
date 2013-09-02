@@ -376,8 +376,8 @@ def main():
     if multichannel:
         cl.begin_time = (now - args.backtrace_time).formatSeedLink()
     else:
-        round_start = UTCDateTime(now.year, now.month, now.day, now.hour + 1,
-                                  0, 0) - args.backtrace_time
+        round_start = UTCDateTime(now.year, now.month, now.day, now.hour, 0, 0)
+        round_start = round_start + 3600 - args.backtrace_time
         cl.begin_time = (round_start).formatSeedLink()
     cl.initialize()
     # start cl in a thread
