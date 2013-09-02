@@ -32,6 +32,6 @@ Keyboard controls only work with option `--with-decoration`!
 ### Dependencies
  - Python 2.7
  - ObsPy (>= https://github.com/obspy/obspy/tree/05597e4642)
- - matplolib
+ - matplolib (>= 1.3.0)
  - scipy
  - numpy
