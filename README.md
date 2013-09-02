@@ -17,6 +17,13 @@ On some linux box, the time zone must be set to UTC and not GMT
 
     seedlink-plotter -s SSB -n G -c BHZ -l 00 --x_position 200 --y_position 50 --x_size 800 --y_size 600 -b 24 --scale 20000 --seedlink_server "rtserver.ipgp.fr:18000" --with_decoration --rainbow --x_scale 60 --nb_rainbow_colors 15
 
+### Keyboard Controls
+
+Keyboard controls only work with option `--with-decoration`!
+
+ - `f`: toggle fullscreen
+ - `<Escape>`: close window
+
 ### Dependencies
  - Python 2.7
  - ObsPy (>= https://github.com/obspy/obspy/tree/05597e4642)
