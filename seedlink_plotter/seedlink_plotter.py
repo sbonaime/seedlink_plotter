@@ -3,6 +3,8 @@
 import matplotlib
 # Set the backend for matplotlib.
 matplotlib.use("TkAgg")
+matplotlib.rc('figure.subplot', hspace=0)
+matplotlib.rc('font', family="monospace")
 
 from obspy.core import Stream
 import Tkinter
@@ -11,6 +13,7 @@ from obspy.seedlink.slclient import SLClient
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
 from matplotlib.ticker import MaxNLocator
+from matplotlib.patheffects import withStroke
 import matplotlib.pyplot as plt
 from obspy.core import UTCDateTime
 from obspy.core.event import Catalog
@@ -41,7 +44,6 @@ class SeedlinkPlotter(Tkinter.Tk):
 
         # main figure
         self.figure = Figure()
-        self.figure.subplots_adjust(hspace=0)
         canvas = FigureCanvasTkAgg(self.figure, master=self)
 
         canvas.show()
@@ -123,11 +125,29 @@ class SeedlinkPlotter(Tkinter.Tk):
     def multichannel_plot(self, stream):
         fig = self.figure
         stream.plot(fig=fig, method="fast", draw=False, equal_scale=False,
-                    size=(self.args.x_size, self.args.y_size))
-        for ax in fig.axes:
-            if ax is not fig.axes[-1]:
-                plt.setp(ax.get_xticklabels(), visible=False)
-            locator = MaxNLocator(4)
+                    size=(self.args.x_size, self.args.y_size), title="")
+        fig.subplots_adjust(left=0, right=1, top=1, bottom=0)
+        bbox = dict(boxstyle="round", fc="w", alpha=0.8)
+        path_effects = [withStroke(linewidth=4, foreground="w")]
+        pad = 10
+        for tr, ax in zip(stream, fig.axes):
+            ax.set_title("")
+            ax.text(0.1, 0.9, tr.id, va="top", ha="left",
+                    transform=ax.transAxes, bbox=bbox, size="xx-large")
+            xlabels = ax.get_xticklabels()
+            ylabels = ax.get_yticklabels()
+            plt.setp(ylabels, ha="left", path_effects=path_effects)
+            ax.yaxis.set_tick_params(pad=-pad)
+            # treatment for bottom axes:
+            if ax is fig.axes[-1]:
+                plt.setp(xlabels, va="bottom", size="x-large", bbox=bbox)
+                plt.setp(xlabels[:1], ha="left")
+                plt.setp(xlabels[-1:], ha="right")
+                ax.xaxis.set_tick_params(pad=-pad)
+            # all other axes
+            else:
+                plt.setp(xlabels, visible=False)
+            locator = MaxNLocator(nbins=4, prune="both")
             ax.yaxis.set_major_locator(locator)
             ax.yaxis.grid(False)
             ax.grid(True, axis="x")
