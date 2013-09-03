@@ -170,6 +170,8 @@ class SeedlinkPlotter(Tkinter.Tk):
             ax.yaxis.set_major_locator(locator)
             ax.yaxis.grid(False)
             ax.grid(True, axis="x")
+        for ax in fig.axes[::2]:
+            ax.set_axis_bgcolor("0.8")
         fig.canvas.draw()
 
     # converter for the colors gradient
