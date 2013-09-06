@@ -6,7 +6,7 @@ matplotlib.use("TkAgg")
 matplotlib.rc('figure.subplot', hspace=0)
 matplotlib.rc('font', family="monospace")
 
-from obspy.core import Stream
+from obspy import Stream, Trace
 import Tkinter
 from obspy.seedlink.slpacket import SLPacket
 from obspy.seedlink.slclient import SLClient
@@ -26,13 +26,14 @@ import warnings
 import sys
 from urllib2 import URLError
 import logging
+import numpy as np
 
 
 class SeedlinkPlotter(Tkinter.Tk):
     """
     This module plots realtime seismic data from a Seedlink server
     """
-    def __init__(self, stream=None, events=None, myargs=None, lock=None, multichannel=False, *args, **kwargs):
+    def __init__(self, stream=None, events=None, myargs=None, lock=None, multichannel=False, trace_ids=None, *args, **kwargs):
         Tkinter.Tk.__init__(self, *args, **kwargs)
         self.focus_set()
         self._bind_keys()
@@ -64,6 +65,7 @@ class SeedlinkPlotter(Tkinter.Tk):
         self.stream = stream
         self.events = events
         self.multichannel = multichannel
+        self.ids = trace_ids
 
         # Colors
         if args.rainbow:
@@ -144,6 +146,15 @@ class SeedlinkPlotter(Tkinter.Tk):
             events=self.events)
 
     def multichannel_plot(self, stream):
+        if self.ids:
+            t = stream[0].stats.starttime
+            for id_ in self.ids:
+                if not any([tr.id == id_ for tr in stream]):
+                    net, sta, loc, cha = id_.split(".")
+                    header = {'network': net, 'station': sta, 'location': loc,
+                              'channel': cha, 'starttime': t}
+                    data = np.zeros(2)
+                    stream.append(Trace(data=data, header=header))
         fig = self.figure
         stream.plot(fig=fig, method="fast", draw=False, equal_scale=False,
                     size=(self.args.x_size, self.args.y_size), title="")
@@ -242,6 +253,24 @@ class SeedlinkUpdater(SLClient):
         with self.lock:
             self.stream += trace
         return False
+
+    def getTraceIDs(self):
+        """
+        Return a list of SEED style Trace IDs that the SLClient is trying to
+        fetch data for.
+        """
+        ids = []
+        for stream in self.slconn.getStreams():
+            net = stream.net
+            sta = stream.station
+            for selector in stream.getSelectors():
+                if len(selector) == 3:
+                    loc = ""
+                else:
+                    loc = selector[:2]
+                cha = selector[-3:]
+                ids.append(".".join((net, sta, loc, cha)))
+        return ids
 
 
 class EventUpdater():
@@ -382,8 +411,6 @@ def main():
     stream = Stream()
     events = Catalog()
     lock = threading.Lock()
-    master = SeedlinkPlotter(stream=stream, events=events, myargs=args,
-                             lock=lock, multichannel=multichannel)
 
     # cl is the seedlink client
     cl = SeedlinkUpdater(stream, myargs=args, lock=lock)
@@ -396,6 +423,7 @@ def main():
         round_start = round_start + 3600 - args.backtrace_time
         cl.begin_time = (round_start).formatSeedLink()
     cl.initialize()
+    ids = cl.getTraceIDs()
     # start cl in a thread
     thread = threading.Thread(target=cl.run)
     thread.setDaemon(True)
@@ -408,6 +436,9 @@ def main():
         thread.setDaemon(True)
         thread.start()
 
+    master = SeedlinkPlotter(stream=stream, events=events, myargs=args,
+                             lock=lock, multichannel=multichannel,
+                             trace_ids=ids)
     master.mainloop()
 
 
