@@ -20,6 +20,7 @@ import time
 import warnings
 import sys
 from urllib2 import URLError
+import logging
 
 
 class SeedlinkPlotter(Tkinter.Tk):
@@ -87,6 +88,8 @@ class SeedlinkPlotter(Tkinter.Tk):
         with self.lock:
             stream = self.stream.copy()
         try:
+            if not stream:
+                raise Exception("Empty stream for plotting")
             title = stream[0].id
             if self.scale:
                 title +=  ' - scale: '+str(self.scale)+' -' 
@@ -108,7 +111,8 @@ class SeedlinkPlotter(Tkinter.Tk):
                 color=self.color,
                 show_y_UTC_label=False,
                 events=self.events)
-        except:
+        except Exception as e:
+            logging.error(e)
             pass
         self.after(int(self.args.update_time*1000), self.plot_graph)
 
@@ -133,8 +137,8 @@ class SeedlinkPlotter(Tkinter.Tk):
 
 class SeedlinkUpdater(SLClient):
     def __init__(self, stream, myargs=None, lock=None):
-        # Set the log level to display minimal info
-        super(SeedlinkUpdater, self).__init__(loglevel='CRITICAL')
+        # loglevel NOTSET delegates messages to parent logger
+        super(SeedlinkUpdater, self).__init__(loglevel="NOTSET")
         self.stream = stream
         self.lock = lock
         self.args = myargs
@@ -162,7 +166,7 @@ class SeedlinkUpdater(SLClient):
         if (type == SLPacket.TYPE_SLINF):
             return False
         if (type == SLPacket.TYPE_SLINFT):
-#             print "Complete INFO:\n" + self.slconn.getInfoString()
+            logging.info("Complete INFO:" + self.slconn.getInfoString())
             if self.infolevel is not None:
                 return True
             else:
@@ -171,7 +175,7 @@ class SeedlinkUpdater(SLClient):
         # process packet data
         trace = slpack.getTrace()
         if trace is None:
-            print self.__class__.__name__ + ": blockette contains no trace"
+            logging.info(self.__class__.__name__ + ": blockette contains no trace")
             return False
 
         #limit the length of main stream buffer
@@ -286,8 +290,17 @@ def main():
     parser.add_argument('-f', '--fullscreen', default=False,
                         action="store_true",
                         help='set to full screen on startup')
+    parser.add_argument('-v', '--verbose', default=False,
+                        action="store_true", dest="verbose",
+                        help='show verbose debugging output')
     # parse the arguments
     args = parser.parse_args()
+
+    if args.verbose:
+        loglevel = logging.DEBUG
+    else:
+        loglevel = logging.CRITICAL
+    logging.basicConfig(level=loglevel)
 
     # before anything else: warn user about window without decoration
     if not args.with_decoration:
