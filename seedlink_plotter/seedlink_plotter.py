@@ -293,6 +293,9 @@ def main():
     parser.add_argument('-v', '--verbose', default=False,
                         action="store_true", dest="verbose",
                         help='show verbose debugging output')
+    parser.add_argument('--force', default=False, action="store_true",
+                        help='skip warning message and confirmation prompt '
+                             'when opening a window without decoration')
     # parse the arguments
     args = parser.parse_args()
 
@@ -303,7 +306,7 @@ def main():
     logging.basicConfig(level=loglevel)
 
     # before anything else: warn user about window without decoration
-    if not args.with_decoration:
+    if not args.with_decoration and not args.force:
         warning_ = "Warning: This is opening a window without decoration " \
                    "that is not controlled via your Window Manager. " \
                    "You can exit with <Ctrl>-C (as long as you do not " \
