@@ -3,7 +3,7 @@ from setuptools import setup
 INSTALL_REQUIRES = [
     'numpy',
     'scipy',
-    'matplotlib',
+    'matplotlib>=1.3.0',
     'obspy']
 
 setup(
