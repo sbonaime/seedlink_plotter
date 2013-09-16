@@ -392,7 +392,7 @@ def main():
                    "that is not controlled via your Window Manager. " \
                    "You can exit with <Ctrl>-C (as long as you do not " \
                    "switch to another window with e.g. <Alt>-<Tab>).\n" \
-                   "Use option '--with-decoration' to open a normal window." \
+                   "Use option '--with_decoration' to open a normal window." \
                    "\n\nType 'y' to continue.. "
         if raw_input(warning_) != "y":
             print "Aborting."
