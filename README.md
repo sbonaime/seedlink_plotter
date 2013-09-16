@@ -21,6 +21,7 @@ Singlechannel plots (with longer time range):
 Multichannel plots (with shorter time range):
 
     seedlink-plotter -s "G_FDF:00BHZ,G_SSB:00BHZ" --x_position 200 --y_position 50 --x_size 800 --y_size 600 -b 0.5 --seedlink_server "rtserver.ipgp.fr:18000" --update_time 2
+    seedlink-plotter -s "G_FDF:00BHZ 00BHN 00BHE" --x_position 200 --y_position 50 --x_size 800 --y_size 600 -b 0.5 --seedlink_server "rtserver.ipgp.fr:18000" --update_time 2
 
 ### Keyboard Controls
 
