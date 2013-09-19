@@ -10,7 +10,7 @@ setup(
     name="seedlink-plotter",
     version="0.1.0",
     description="Plot data acquired in realtime in from a seedlink server.",
-    author="Stephane Bonaime, Lion Krischer, Tobias Megies",
+    author="Sebastien Bonaime, Lion Krischer, Tobias Megies",
     author_email="bonaime@ipgp.fr",
     url="https://github.com/bonaime/seedlink_plotter",
     download_url="https://github.com/bonaime/seedlink_plotter.git",
