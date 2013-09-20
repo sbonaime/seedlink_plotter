@@ -157,7 +157,7 @@ class SeedlinkPlotter(Tkinter.Tk):
                     stream.append(Trace(data=data, header=header))
         fig = self.figure
         stream.plot(fig=fig, method="fast", draw=False, equal_scale=False,
-                    size=(self.args.x_size, self.args.y_size), title="")
+                    size=(self.args.x_size, self.args.y_size), title="",color='Blue')
         fig.subplots_adjust(left=0, right=1, top=1, bottom=0)
         bbox = dict(boxstyle="round", fc="w", alpha=0.8)
         path_effects = [withStroke(linewidth=4, foreground="w")]
@@ -165,14 +165,14 @@ class SeedlinkPlotter(Tkinter.Tk):
         for tr, ax in zip(stream, fig.axes):
             ax.set_title("")
             ax.text(0.1, 0.9, tr.id, va="top", ha="left",
-                    transform=ax.transAxes, bbox=bbox, size="xx-large")
+                    transform=ax.transAxes, bbox=bbox, size=self.args.title_size)
             xlabels = ax.get_xticklabels()
             ylabels = ax.get_yticklabels()
             plt.setp(ylabels, ha="left", path_effects=path_effects)
             ax.yaxis.set_tick_params(pad=-pad)
             # treatment for bottom axes:
             if ax is fig.axes[-1]:
-                plt.setp(xlabels, va="bottom", size="x-large", bbox=bbox)
+                plt.setp(xlabels, va="bottom", size=self.args.time_legend_size, bbox=bbox)
                 plt.setp(xlabels[:1], ha="left")
                 plt.setp(xlabels[-1:], ha="right")
                 ax.xaxis.set_tick_params(pad=-pad)
@@ -356,6 +356,10 @@ def main():
         '--x_size', type=int, help='the x size of the graph', required=False, default=800)
     parser.add_argument(
         '--y_size', type=int, help='the y size of the graph', required=False, default=600)
+    parser.add_argument(
+        '--title_size', type=int, help='the title size of each station in multichannel', required=False, default=10)
+    parser.add_argument(
+        '--time_legend_size', type=int, help='the size of time legend in multichannel', required=False, default=10)
     parser.add_argument(
         '--with_decoration', help='the graph window will have decorations', required=False, action='store_true')
     parser.add_argument(
