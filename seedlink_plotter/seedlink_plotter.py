@@ -132,7 +132,7 @@ class SeedlinkPlotter(Tkinter.Tk):
         title += " without filtering"
         stream.plot(
             fig=self.figure, type='dayplot', interval=self.args.x_scale,
-            number_of_ticks=13, tick_format='%d/%m %Hh',
+            number_of_ticks=self.args.time_tick_nb, tick_format=self.args.tick_format,
             size=(self.args.x_size, self.args.y_size),
             x_labels_size=8, y_labels_size=8,
             title=title, title_size=14,
@@ -157,7 +157,8 @@ class SeedlinkPlotter(Tkinter.Tk):
                     stream.append(Trace(data=data, header=header))
         fig = self.figure
         stream.plot(fig=fig, method="fast", draw=False, equal_scale=False,
-                    size=(self.args.x_size, self.args.y_size), title="",color='Blue')
+                    size=(self.args.x_size, self.args.y_size), title="",color='Blue'
+                    ,tick_format=self.args.tick_format, number_of_ticks=self.args.time_tick_nb)
         fig.subplots_adjust(left=0, right=1, top=1, bottom=0)
         bbox = dict(boxstyle="round", fc="w", alpha=0.8)
         path_effects = [withStroke(linewidth=4, foreground="w")]
@@ -361,11 +362,15 @@ def main():
     parser.add_argument(
         '--time_legend_size', type=int, help='the size of time legend in multichannel', required=False, default=10)
     parser.add_argument(
+        '--tick_format', type=str, help='the tick format of time legend ', required=False, default='%d/%m %Hh')
+    parser.add_argument(
+        '--time_tick_nb', type=int, help='the number of time tick', required=False)
+    parser.add_argument(
         '--with_decoration', help='the graph window will have decorations', required=False, action='store_true')
     parser.add_argument(
         '--rainbow', help='', required=False, action='store_true')
     parser.add_argument(
-        '--nb_rainbow_colors', help='numbers of colors for rainbow mode', required=False, default=10)
+        '--nb_rainbow_colors', help='the numbers of colors for rainbow mode', required=False, default=10)
     parser.add_argument(
         '--update_time', help='time in seconds between each graphic update', required=False, default=10, type=float)
     parser.add_argument('--events', required=False, default=None, type=float,
@@ -409,8 +414,12 @@ def main():
 
     if any([x in args.seedlink_streams for x in ", ?*"]):
         multichannel = True
+        if (args.time_tick_nb == None) :
+            args.time_tick_nb = 5
     else:
         multichannel = False
+        if (args.time_tick_nb == None) :
+            args.time_tick_nb = 13
 
     stream = Stream()
     events = Catalog()
