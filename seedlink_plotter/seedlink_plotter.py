@@ -98,22 +98,21 @@ class SeedlinkPlotter(Tkinter.Tk):
             self.stream.merge()
             # leave some data left of our start for possible processing
             if self.multichannel:
-                start_time = now - self.backtrace
-                self.stream.trim(starttime=start_time - 120, nearest_sample=False)
+                self.start_time = now - self.backtrace
+                self.stream.trim(starttime=self.start_time - 120, nearest_sample=False)
             else:
-                stop_time = UTCDateTime(now.year, now.month, now.day, now.hour, 0, 0)+3600
-                start_time = stop_time-self.args.backtrace_time
-                self.stream.trim(starttime=start_time, endtime=stop_time, nearest_sample=False)
+                self.stop_time = UTCDateTime(now.year, now.month, now.day, now.hour, 0, 0)+3600
+                self.start_time = self.stop_time-self.args.backtrace_time
+                self.stream.trim(starttime=self.start_time, endtime=self.stop_time, nearest_sample=False)
             stream = self.stream.copy()
 
         try:
-            stream.sort()
             if self.multichannel:
-                stream.trim(starttime=start_time, endtime=now, pad=True,
+                stream.trim(starttime=self.start_time, endtime=now, pad=True,
                             nearest_sample=False)
             if not stream:
                 raise Exception("Empty stream for plotting")
-            self.figure.clear()
+
             if self.multichannel:
                 self.multichannel_plot(stream)
             else:
@@ -130,6 +129,7 @@ class SeedlinkPlotter(Tkinter.Tk):
         else:
             title += ' - autoscale -'
         title += " without filtering"
+        self.figure.clear()
         stream.plot(
             fig=self.figure, type='dayplot', interval=self.args.x_scale,
             number_of_ticks=self.args.time_tick_nb, tick_format=self.args.tick_format,
@@ -155,6 +155,8 @@ class SeedlinkPlotter(Tkinter.Tk):
                               'channel': cha, 'starttime': t}
                     data = np.zeros(2)
                     stream.append(Trace(data=data, header=header))
+        stream.sort()
+        self.figure.clear()
         fig = self.figure
         stream.plot(fig=fig, method="fast", draw=False, equal_scale=False,
                     size=(self.args.x_size, self.args.y_size), title="",color='Blue'
@@ -271,6 +273,7 @@ class SeedlinkUpdater(SLClient):
                     loc = selector[:2]
                 cha = selector[-3:]
                 ids.append(".".join((net, sta, loc, cha)))
+        ids.sort()
         return ids
 
 
