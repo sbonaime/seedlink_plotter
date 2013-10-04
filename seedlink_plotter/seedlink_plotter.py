@@ -147,12 +147,11 @@ class SeedlinkPlotter(Tkinter.Tk):
 
     def multichannel_plot(self, stream):
         if self.ids:
-            t = stream[0].stats.starttime
             for id_ in self.ids:
                 if not any([tr.id == id_ for tr in stream]):
                     net, sta, loc, cha = id_.split(".")
                     header = {'network': net, 'station': sta, 'location': loc,
-                              'channel': cha, 'starttime': t}
+                              'channel': cha, 'starttime': self.start_time }
                     data = np.zeros(2)
                     stream.append(Trace(data=data, header=header))
         stream.sort()
