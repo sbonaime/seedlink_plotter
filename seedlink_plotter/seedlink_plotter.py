@@ -93,23 +93,22 @@ class SeedlinkPlotter(Tkinter.Tk):
 
     def plot_graph(self):
         now = UTCDateTime()
+        if self.multichannel:
+            self.start_time = now - self.backtrace
+            self.stop_time = now
+        else:
+            self.stop_time = UTCDateTime(now.year, now.month, now.day, now.hour, 0, 0)+3600
+            self.start_time = self.stop_time-self.args.backtrace_time
 
         with self.lock:
-            self.stream.merge()
             # leave some data left of our start for possible processing
-            if self.multichannel:
-                self.start_time = now - self.backtrace
-                self.stream.trim(starttime=self.start_time - 120, nearest_sample=False)
-            else:
-                self.stop_time = UTCDateTime(now.year, now.month, now.day, now.hour, 0, 0)+3600
-                self.start_time = self.stop_time-self.args.backtrace_time
-                self.stream.trim(starttime=self.start_time, endtime=self.stop_time, nearest_sample=False)
+            self.stream.trim(starttime=self.start_time - 120, nearest_sample=False)
             stream = self.stream.copy()
 
         try:
-            if self.multichannel:
-                stream.trim(starttime=self.start_time, endtime=now, pad=True,
-                            nearest_sample=False)
+            stream.merge()
+            stream.trim(starttime=self.start_time, endtime=self.stop_time,
+                        pad=True, nearest_sample=False)
             if not stream:
                 raise Exception("Empty stream for plotting")
 
