@@ -109,6 +109,7 @@ class SeedlinkPlotter(Tkinter.Tk):
             stream.merge()
             stream.trim(starttime=self.start_time, endtime=self.stop_time,
                         pad=True, nearest_sample=False)
+            logging.info(str(stream.split()))
             if not stream:
                 raise Exception("Empty stream for plotting")
 
