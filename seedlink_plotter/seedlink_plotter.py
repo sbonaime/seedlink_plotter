@@ -364,7 +364,7 @@ def main():
     parser.add_argument(
         '--time_legend_size', type=int, help='the size of time legend in multichannel', required=False, default=10)
     parser.add_argument(
-        '--tick_format', type=str, help='the tick format of time legend ', required=False, default='%d/%m/%y %H:%m')
+        '--tick_format', type=str, help='the tick format of time legend ', required=False, default='%d/%m/%y %H:%M')
     parser.add_argument(
         '--time_tick_nb', type=int, help='the number of time tick', required=False)
     parser.add_argument(
