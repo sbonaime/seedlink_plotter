@@ -45,7 +45,7 @@ class SeedlinkPlotter(Tkinter.Tk):
         w, h, pad = self.winfo_screenwidth(), self.winfo_screenheight(), 3
         self._geometry = ("%ix%i+0+0" % (w - pad, h - pad))
         # hide the window decoration
-        if not args.with_decoration:
+        if args.without_decoration:
             self.wm_overrideredirect(True)
         if args.fullscreen:
             self._toggle_fullscreen(None)
@@ -368,7 +368,10 @@ def main():
     parser.add_argument(
         '--time_tick_nb', type=int, help='the number of time tick', required=False)
     parser.add_argument(
-        '--with_decoration', help='the graph window will have decorations', required=False, action='store_true')
+        '--without-decoration', required=False, action='store_true',
+        help=('the graph window will have no decorations. that means the '
+              'window is not controlled by the window manager and can only '
+              'be closed by killing the respective process.'))
     parser.add_argument(
         '--rainbow', help='', required=False, action='store_true')
     parser.add_argument(
@@ -398,13 +401,12 @@ def main():
     logging.basicConfig(level=loglevel)
 
     # before anything else: warn user about window without decoration
-    if not args.with_decoration and not args.force:
-        warning_ = "Warning: This is opening a window without decoration " \
-                   "that is not controlled via your Window Manager. " \
-                   "You can exit with <Ctrl>-C (as long as you do not " \
-                   "switch to another window with e.g. <Alt>-<Tab>).\n" \
-                   "Use option '--with_decoration' to open a normal window." \
-                   "\n\nType 'y' to continue.. "
+    if args.without_decoration and not args.force:
+        warning_ = ("Warning: You are about to open a window without "
+                    "decoration that is not controlled via your Window "
+                    "Manager. You can exit with <Ctrl>-C (as long as you do "
+                    "not switch to another window with e.g. <Alt>-<Tab>)."
+                    "\n\nType 'y' to continue.. ")
         if raw_input(warning_) != "y":
             print "Aborting."
             sys.exit()
