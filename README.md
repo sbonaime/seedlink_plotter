@@ -16,7 +16,7 @@ On some linux box, the time zone must be set to UTC and not GMT
 Singlechannel plots (with longer time range):
 
     seedlink-plotter -s "G_FDF:00BHZ" --x_position 200 --y_position 50 --x_size 800 --y_size 600 -b 24 --scale 20000 --seedlink_server "rtserver.ipgp.fr:18000" --x_scale 60
-    seedlink-plotter -s "G_SSB:00BHZ" --x_position 200 --y_position 50 --x_size 800 --y_size 600 -b 24 --scale 20000 --seedlink_server "rtserver.ipgp.fr:18000" --with_decoration --rainbow --x_scale 60 --nb_rainbow_colors 15
+    seedlink-plotter -s "G_SSB:00BHZ" --x_position 200 --y_position 50 --x_size 800 --y_size 600 -b 24 --scale 20000 --seedlink_server "rtserver.ipgp.fr:18000" --without-decoration --rainbow --x_scale 60 --nb_rainbow_colors 15
 
 ![Singlechannel](/img/Singlechannel.png)
 
@@ -30,7 +30,7 @@ Multichannel plots (with shorter time range):
 
 ### Keyboard Controls
 
-Keyboard controls only work with option `--with-decoration`!
+Keyboard controls only work without option `--without-decoration`!
 
  - `f`: toggle fullscreen
  - `<Escape>`: close window
