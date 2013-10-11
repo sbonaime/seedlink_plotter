@@ -364,7 +364,7 @@ def main():
     parser.add_argument(
         '--time_legend_size', type=int, help='the size of time legend in multichannel', required=False, default=10)
     parser.add_argument(
-        '--tick_format', type=str, help='the tick format of time legend ', required=False, default='%d/%m/%y %H:%M')
+        '--tick_format', type=str, help='the tick format of time legend ', required=False, default=None)
     parser.add_argument(
         '--time_tick_nb', type=int, help='the number of time tick', required=False)
     parser.add_argument(
@@ -416,12 +416,19 @@ def main():
 
     if any([x in args.seedlink_streams for x in ", ?*"]):
         multichannel = True
-        if (args.time_tick_nb == None) :
-            args.time_tick_nb = 5
     else:
         multichannel = False
-        if (args.time_tick_nb == None) :
+
+    if multichannel:
+        if args.time_tick_nb is None:
+            args.time_tick_nb = 5
+        if args.tick_format is None:
+            args.tick_format = '%H:%M:%S'
+    else:
+        if args.time_tick_nb is None:
             args.time_tick_nb = 13
+        if args.tick_format is None:
+            args.tick_format = '%d/%m/%y %Hh'
 
     stream = Stream()
     events = Catalog()
