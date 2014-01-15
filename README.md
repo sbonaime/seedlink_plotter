@@ -20,7 +20,7 @@ Drum plots (with longer time range):
 ![Singlechannel](/img/Singlechannel.png)
 
 
-Line plots with single station (with shorter time range):
+Line plot with single station (with shorter time range):
 
     seedlink-plotter -s "G_IVI:00BHZ" -b 600 --seedlink_server "rtserver.ipgp.fr:18000"  --plot_line
 
