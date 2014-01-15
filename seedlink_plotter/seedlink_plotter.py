@@ -33,7 +33,7 @@ class SeedlinkPlotter(Tkinter.Tk):
     """
     This module plots realtime seismic data from a Seedlink server
     """
-    def __init__(self, stream=None, events=None, myargs=None, lock=None, multichannel=False, trace_ids=None, *args, **kwargs):
+    def __init__(self, stream=None, events=None, myargs=None, lock=None, drum_plot=True, trace_ids=None, *args, **kwargs):
         Tkinter.Tk.__init__(self, *args, **kwargs)
         self.focus_set()
         self._bind_keys()
@@ -64,7 +64,7 @@ class SeedlinkPlotter(Tkinter.Tk):
         self.args = args
         self.stream = stream
         self.events = events
-        self.multichannel = multichannel
+        self.drum_plot = drum_plot
         self.ids = trace_ids
 
         # Colors
@@ -93,12 +93,12 @@ class SeedlinkPlotter(Tkinter.Tk):
 
     def plot_graph(self):
         now = UTCDateTime()
-        if self.multichannel:
-            self.start_time = now - self.backtrace
-            self.stop_time = now
-        else:
+        if self.drum_plot:
             self.stop_time = UTCDateTime(now.year, now.month, now.day, now.hour, 0, 0)+3600
             self.start_time = self.stop_time-self.args.backtrace_time
+        else:
+            self.start_time = now - self.backtrace
+            self.stop_time = now
 
         with self.lock:
             # leave some data left of our start for possible processing
@@ -113,16 +113,16 @@ class SeedlinkPlotter(Tkinter.Tk):
             if not stream:
                 raise Exception("Empty stream for plotting")
 
-            if self.multichannel:
-                self.multichannel_plot(stream)
+            if self.drum_plot:
+                self.drumplot(stream)                
             else:
-                self.singlechannel_plot(stream)
+                self.regular_plot(stream)
         except Exception as e:
             logging.error(e)
             pass
         self.after(int(self.args.update_time*1000), self.plot_graph)
 
-    def singlechannel_plot(self, stream):
+    def drumplot(self, stream):
         title = stream[0].id
         if self.scale:
             title +=  ' - scale: '+str(self.scale)+' -' 
@@ -145,7 +145,7 @@ class SeedlinkPlotter(Tkinter.Tk):
             show_y_UTC_label=False,
             events=self.events)
 
-    def multichannel_plot(self, stream):
+    def regular_plot(self, stream):
         if self.ids:
             for id_ in self.ids:
                 if not any([tr.id == id_ for tr in stream]):
@@ -163,7 +163,7 @@ class SeedlinkPlotter(Tkinter.Tk):
         fig.subplots_adjust(left=0, right=1, top=1, bottom=0)
         bbox = dict(boxstyle="round", fc="w", alpha=0.8)
         path_effects = [withStroke(linewidth=4, foreground="w")]
-        pad = 10
+        pad = 10        
         for tr, ax in zip(stream, fig.axes):
             ax.set_title("")
             ax.text(0.1, 0.9, tr.id, va="top", ha="left",
@@ -293,7 +293,7 @@ class EventUpdater():
         (daemon) thread.
         """
         while True:
-            # no stream, reschedule event update in 10 seconds
+            # no stream, reschedule event update in 20 seconds
             if not self.stream:
                 time.sleep(20)
                 continue
@@ -350,7 +350,7 @@ def main():
     parser.add_argument(
         '--x_scale', type=int, help='the number of minute to plot per line', default=60)
     parser.add_argument('-b', '--backtrace_time', type=float,
-                        help='the number of hours to plot', required=True)
+                        help='the number of seconds to plot (3600=1h,86400=24h)', required=True)
     parser.add_argument('--x_position', type=int,
                         help='the x position of the graph', required=False, default=0)
     parser.add_argument('--y_position', type=int,
@@ -372,6 +372,8 @@ def main():
         help=('the graph window will have no decorations. that means the '
               'window is not controlled by the window manager and can only '
               'be closed by killing the respective process.'))
+    parser.add_argument(
+        '--line_plot', help='regular real time plot for one station', required=False, action='store_true')
     parser.add_argument(
         '--rainbow', help='', required=False, action='store_true')
     parser.add_argument(
@@ -411,27 +413,25 @@ def main():
             print "Aborting."
             sys.exit()
 
-    # backtrace is now in second
-    args.backtrace_time = 3600 * args.backtrace_time
-
     now = UTCDateTime()
 
-    if any([x in args.seedlink_streams for x in ", ?*"]):
-        multichannel = True
+    if any([x in args.seedlink_streams for x in ", ?*"]) or args.line_plot:
+        drum_plot = False
     else:
-        multichannel = False
+        drum_plot = True
 
-    if multichannel:
-        if args.time_tick_nb is None:
-            args.time_tick_nb = 5
-        if args.tick_format is None:
-            args.tick_format = '%H:%M:%S'
-    else:
+
+    if drum_plot:
         if args.time_tick_nb is None:
             args.time_tick_nb = 13
         if args.tick_format is None:
             args.tick_format = '%d/%m/%y %Hh'
-
+    else:
+        if args.time_tick_nb is None:
+            args.time_tick_nb = 5
+        if args.tick_format is None:
+            args.tick_format = '%H:%M:%S'
+        
     stream = Stream()
     events = Catalog()
     lock = threading.Lock()
@@ -440,12 +440,12 @@ def main():
     cl = SeedlinkUpdater(stream, myargs=args, lock=lock)
     cl.slconn.setSLAddress(args.seedlink_server)
     cl.multiselect = args.seedlink_streams
-    if multichannel:
-        cl.begin_time = (now - args.backtrace_time).formatSeedLink()
-    else:
+    if drum_plot:
         round_start = UTCDateTime(now.year, now.month, now.day, now.hour, 0, 0)
         round_start = round_start + 3600 - args.backtrace_time
         cl.begin_time = (round_start).formatSeedLink()
+    else:
+        cl.begin_time = (now - args.backtrace_time).formatSeedLink()
     cl.initialize()
     ids = cl.getTraceIDs()
     # start cl in a thread
@@ -459,9 +459,12 @@ def main():
         thread = threading.Thread(target=eu.run)
         thread.setDaemon(True)
         thread.start()
-
+    
+    #Wait few seconds to get data
+    time.sleep(2)
+     
     master = SeedlinkPlotter(stream=stream, events=events, myargs=args,
-                             lock=lock, multichannel=multichannel,
+                             lock=lock, drum_plot=drum_plot,
                              trace_ids=ids)
     master.mainloop()
 
