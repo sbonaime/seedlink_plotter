@@ -2,8 +2,7 @@
 
 A python script to plot real time seismic data from a seedlink server
 
-This version does not work with the latest stable ObsPy version.
-If you have ObsPy 0.8.3 or earlier, you need to update to a more recent unstable version (at least 26/03/2013, e.g. https://github.com/obspy/obspy/tree/05597e4642).
+This version work with the latest stable ObsPy version (0.9.0).
 
 On some linux box, the time zone must be set to UTC and not GMT
 
