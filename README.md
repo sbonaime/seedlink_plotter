@@ -1,6 +1,6 @@
 ## Seedlink-Plotter
 
-A python script to plot real time seismic data from a seedlink server
+A python script to plot real time seismic data from a seedlink server in drum style or line style
 
 This version work with the latest stable ObsPy version (0.9.0).
 
@@ -41,7 +41,7 @@ Keyboard controls only work without option `--without-decoration`!
 
 ### Dependencies
  - Python 2.7
- - ObsPy (>= https://github.com/obspy/obspy/tree/05597e4642)
+ - ObsPy 0.9.0
  - matplolib (>= 1.3.0)
  - scipy
  - numpy
