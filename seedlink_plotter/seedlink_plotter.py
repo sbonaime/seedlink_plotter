@@ -118,15 +118,15 @@ class SeedlinkPlotter(Tkinter.Tk):
                 raise Exception("Empty stream for plotting")
 
             if self.drum_plot:
-                self.drumplot(stream)
+                self.plot_drum(stream)
             else:
-                self.regular_plot(stream)
+                self.plot_lines(stream)
         except Exception as e:
             logging.error(e)
             pass
         self.after(int(self.args.update_time * 1000), self.plot_graph)
 
-    def drumplot(self, stream):
+    def plot_drum(self, stream):
         title = stream[0].id
         if self.scale:
             title += ' - scale: ' + str(self.scale) + ' -'
@@ -149,7 +149,7 @@ class SeedlinkPlotter(Tkinter.Tk):
             show_y_UTC_label=False,
             events=self.events)
 
-    def regular_plot(self, stream):
+    def plot_lines(self, stream):
         if self.ids:
             for id_ in self.ids:
                 if not any([tr.id == id_ for tr in stream]):
@@ -382,7 +382,7 @@ def main():
               'window is not controlled by the window manager and can only '
               'be closed by killing the respective process.'))
     parser.add_argument(
-        '--line_plot', help='regular real time plot for single station', required=False, action='store_true')
+        '--plot_lines', help='regular real time plot for single station', required=False, action='store_true')
     parser.add_argument(
         '--rainbow', help='', required=False, action='store_true')
     parser.add_argument(
@@ -425,7 +425,7 @@ def main():
 
     now = UTCDateTime()
 
-    if any([x in args.seedlink_streams for x in ", ?*"]) or args.line_plot:
+    if any([x in args.seedlink_streams for x in ", ?*"]) or args.plot_lines:
         drum_plot = False
     else:
         drum_plot = True
