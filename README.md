@@ -1,9 +1,8 @@
 ## Seedlink-Plotter
 
-A python script to plot real time seismic data from a seedlink server
+A python script to plot real time seismic data from a seedlink server in drum style or line style
 
-This version does not work with the latest stable ObsPy version.
-If you have ObsPy 0.8.3 or earlier, you need to update to a more recent unstable version (at least 26/03/2013, e.g. https://github.com/obspy/obspy/tree/05597e4642).
+This version work with the latest stable ObsPy version (0.9.0).
 
 On some linux box, the time zone must be set to UTC and not GMT
 
@@ -13,18 +12,23 @@ On some linux box, the time zone must be set to UTC and not GMT
 
 ### Usage examples
 
-Singlechannel plots (with longer time range):
+Drum plots (with longer time range):
 
-    seedlink-plotter -s "G_FDF:00BHZ" --x_position 200 --y_position 50 --x_size 800 --y_size 600 -b 24 --scale 20000 --seedlink_server "rtserver.ipgp.fr:18000" --x_scale 60
-    seedlink-plotter -s "G_SSB:00BHZ" --x_position 200 --y_position 50 --x_size 800 --y_size 600 -b 24 --scale 20000 --seedlink_server "rtserver.ipgp.fr:18000" --without-decoration --rainbow --x_scale 60 --nb_rainbow_colors 15
+    seedlink-plotter -s "G_FDF:00BHZ" --x_position 200 --y_position 50 --x_size 800 --y_size 600 -b 86400 --scale 20000 --seedlink_server "rtserver.ipgp.fr:18000" --x_scale 60
 
 ![Singlechannel](/img/Singlechannel.png)
 
 
-Multichannel plots (with shorter time range):
+Line plot with single station (with shorter time range):
 
-    seedlink-plotter -s "G_FDF:00BHZ,G_SSB:00BHZ" --x_position 200 --y_position 50 --x_size 800 --y_size 600 -b 0.5 --seedlink_server "rtserver.ipgp.fr:18000" --update_time 2
-    seedlink-plotter -s "G_FDF:00BHZ 00BHN 00BHE" --x_position 200 --y_position 50 --x_size 800 --y_size 600 -b 0.5 --seedlink_server "rtserver.ipgp.fr:18000" --update_time 2
+    seedlink-plotter -s "G_IVI:00BHZ" -b 600 --seedlink_server "rtserver.ipgp.fr:18000"  --plot_line
+
+![Plot_line](/img/plot_line.png)
+
+Line plots with multiple stations (with shorter time range):
+
+    seedlink-plotter -s "G_FDF:00BHZ,G_SSB:00BHZ" --x_position 200 --y_position 50 --x_size 800 --y_size 600 -b 1800 --seedlink_server "rtserver.ipgp.fr:18000" --update_time 2
+    seedlink-plotter -s "G_FDF:00BHZ 00BHN 00BHE" --x_position 200 --y_position 50 --x_size 800 --y_size 600 -b 1800 --seedlink_server "rtserver.ipgp.fr:18000" --update_time 2
 
 ![Multichannel](/img/Multichannel.png)
 
@@ -37,7 +41,7 @@ Keyboard controls only work without option `--without-decoration`!
 
 ### Dependencies
  - Python 2.7
- - ObsPy (>= https://github.com/obspy/obspy/tree/05597e4642)
+ - ObsPy 0.9.0
  - matplolib (>= 1.3.0)
  - scipy
  - numpy

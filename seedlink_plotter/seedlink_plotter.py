@@ -30,18 +30,20 @@ import numpy as np
 
 
 class SeedlinkPlotter(Tkinter.Tk):
+
     """
     This module plots realtime seismic data from a Seedlink server
     """
-    def __init__(self, stream=None, events=None, myargs=None, lock=None, multichannel=False, trace_ids=None, *args, **kwargs):
+
+    def __init__(self, stream=None, events=None, myargs=None, lock=None, drum_plot=True, trace_ids=None, *args, **kwargs):
         Tkinter.Tk.__init__(self, *args, **kwargs)
         self.focus_set()
         self._bind_keys()
         args = myargs
         self.lock = lock
         ### size and position
-        self.geometry(str(args.x_size)+'x'+str(args.y_size)+'+'+str(
-            args.x_position)+'+'+str(args.y_position))
+        self.geometry(str(args.x_size) + 'x' + str(args.y_size) + '+' + str(
+            args.x_position) + '+' + str(args.y_position))
         w, h, pad = self.winfo_screenwidth(), self.winfo_screenheight(), 3
         self._geometry = ("%ix%i+0+0" % (w - pad, h - pad))
         # hide the window decoration
@@ -64,7 +66,7 @@ class SeedlinkPlotter(Tkinter.Tk):
         self.args = args
         self.stream = stream
         self.events = events
-        self.multichannel = multichannel
+        self.drum_plot = drum_plot
         self.ids = trace_ids
 
         # Colors
@@ -93,16 +95,18 @@ class SeedlinkPlotter(Tkinter.Tk):
 
     def plot_graph(self):
         now = UTCDateTime()
-        if self.multichannel:
+        if self.drum_plot:
+            self.stop_time = UTCDateTime(
+                now.year, now.month, now.day, now.hour, 0, 0) + 3600
+            self.start_time = self.stop_time - self.args.backtrace_time
+        else:
             self.start_time = now - self.backtrace
             self.stop_time = now
-        else:
-            self.stop_time = UTCDateTime(now.year, now.month, now.day, now.hour, 0, 0)+3600
-            self.start_time = self.stop_time-self.args.backtrace_time
 
         with self.lock:
             # leave some data left of our start for possible processing
-            self.stream.trim(starttime=self.start_time - 120, nearest_sample=False)
+            self.stream.trim(
+                starttime=self.start_time - 120, nearest_sample=False)
             stream = self.stream.copy()
 
         try:
@@ -113,19 +117,19 @@ class SeedlinkPlotter(Tkinter.Tk):
             if not stream:
                 raise Exception("Empty stream for plotting")
 
-            if self.multichannel:
-                self.multichannel_plot(stream)
+            if self.drum_plot:
+                self.plot_drum(stream)
             else:
-                self.singlechannel_plot(stream)
+                self.plot_lines(stream)
         except Exception as e:
             logging.error(e)
             pass
-        self.after(int(self.args.update_time*1000), self.plot_graph)
+        self.after(int(self.args.update_time * 1000), self.plot_graph)
 
-    def singlechannel_plot(self, stream):
+    def plot_drum(self, stream):
         title = stream[0].id
         if self.scale:
-            title +=  ' - scale: '+str(self.scale)+' -' 
+            title += ' - scale: ' + str(self.scale) + ' -'
         else:
             title += ' - autoscale -'
         title += " without filtering"
@@ -145,21 +149,20 @@ class SeedlinkPlotter(Tkinter.Tk):
             show_y_UTC_label=False,
             events=self.events)
 
-    def multichannel_plot(self, stream):
+    def plot_lines(self, stream):
         if self.ids:
             for id_ in self.ids:
                 if not any([tr.id == id_ for tr in stream]):
                     net, sta, loc, cha = id_.split(".")
                     header = {'network': net, 'station': sta, 'location': loc,
-                              'channel': cha, 'starttime': self.start_time }
+                              'channel': cha, 'starttime': self.start_time}
                     data = np.zeros(2)
                     stream.append(Trace(data=data, header=header))
         stream.sort()
         self.figure.clear()
         fig = self.figure
         stream.plot(fig=fig, method="fast", draw=False, equal_scale=False,
-                    size=(self.args.x_size, self.args.y_size), title="",color='Blue'
-                    ,tick_format=self.args.tick_format, number_of_ticks=self.args.time_tick_nb)
+                    size=(self.args.x_size, self.args.y_size), title="", color='Blue', tick_format=self.args.tick_format, number_of_ticks=self.args.time_tick_nb)
         fig.subplots_adjust(left=0, right=1, top=1, bottom=0)
         bbox = dict(boxstyle="round", fc="w", alpha=0.8)
         path_effects = [withStroke(linewidth=4, foreground="w")]
@@ -174,7 +177,8 @@ class SeedlinkPlotter(Tkinter.Tk):
             ax.yaxis.set_tick_params(pad=-pad)
             # treatment for bottom axes:
             if ax is fig.axes[-1]:
-                plt.setp(xlabels, va="bottom", size=self.args.time_legend_size, bbox=bbox)
+                plt.setp(
+                    xlabels, va="bottom", size=self.args.time_legend_size, bbox=bbox)
                 plt.setp(xlabels[:1], ha="left")
                 plt.setp(xlabels[-1:], ha="right")
                 ax.xaxis.set_tick_params(pad=-pad)
@@ -199,16 +203,18 @@ class SeedlinkPlotter(Tkinter.Tk):
         frequency = 0.3
         for compteur_lignes in xrange(max_color):
 
-            red = sin(frequency*compteur_lignes*2 + 0)*127+128
-            green = sin(frequency*compteur_lignes*2 + 2)*127+128
-            blue = sin(frequency*compteur_lignes*2 + 4)*127+128
+            red = sin(frequency * compteur_lignes * 2 + 0) * 127 + 128
+            green = sin(frequency * compteur_lignes * 2 + 2) * 127 + 128
+            blue = sin(frequency * compteur_lignes * 2 + 4) * 127 + 128
 
-            color_list.append(self.rgb_to_hex(red_value=red, green_value=green, blue_value=blue))
+            color_list.append(
+                self.rgb_to_hex(red_value=red, green_value=green, blue_value=blue))
 
         return tuple(color_list)
 
 
 class SeedlinkUpdater(SLClient):
+
     def __init__(self, stream, myargs=None, lock=None):
         # loglevel NOTSET delegates messages to parent logger
         super(SeedlinkUpdater, self).__init__(loglevel="NOTSET")
@@ -248,7 +254,8 @@ class SeedlinkUpdater(SLClient):
         # process packet data
         trace = slpack.getTrace()
         if trace is None:
-            logging.info(self.__class__.__name__ + ": blockette contains no trace")
+            logging.info(
+                self.__class__.__name__ + ": blockette contains no trace")
             return False
 
         # new samples add to the main stream which is then trimmed
@@ -277,6 +284,7 @@ class SeedlinkUpdater(SLClient):
 
 
 class EventUpdater():
+
     def __init__(self, stream, events, myargs=None, lock=None):
         self.stream = stream
         self.events = events
@@ -293,7 +301,7 @@ class EventUpdater():
         (daemon) thread.
         """
         while True:
-            # no stream, reschedule event update in 10 seconds
+            # no stream, reschedule event update in 20 seconds
             if not self.stream:
                 time.sleep(20)
                 continue
@@ -314,7 +322,8 @@ class EventUpdater():
         Method to fetch updated list of events to use in plot.
         """
         with self.lock:
-            start, end = self.stream[0].stats.starttime, self.stream[0].stats.endtime
+            start, end = self.stream[0].stats.starttime,
+            self.stream[0].stats.endtime
         c = Client()
         events = c.getEvents(min_datetime=start, max_datetime=end,
                              format="catalog",
@@ -350,7 +359,7 @@ def main():
     parser.add_argument(
         '--x_scale', type=int, help='the number of minute to plot per line', default=60)
     parser.add_argument('-b', '--backtrace_time', type=float,
-                        help='the number of hours to plot', required=True)
+                        help='the number of seconds to plot (3600=1h,86400=24h)', required=True)
     parser.add_argument('--x_position', type=int,
                         help='the x position of the graph', required=False, default=0)
     parser.add_argument('--y_position', type=int,
@@ -373,6 +382,8 @@ def main():
               'window is not controlled by the window manager and can only '
               'be closed by killing the respective process.'))
     parser.add_argument(
+        '--plot_lines', help='regular real time plot for single station', required=False, action='store_true')
+    parser.add_argument(
         '--rainbow', help='', required=False, action='store_true')
     parser.add_argument(
         '--nb_rainbow_colors', help='the numbers of colors for rainbow mode', required=False, default=10)
@@ -380,8 +391,9 @@ def main():
         '--update_time', help='time in seconds between each graphic update', required=False, default=10, type=float)
     parser.add_argument('--events', required=False, default=None, type=float,
                         help='plot events using obspy.neries, specify minimum magnitude')
-    parser.add_argument('--events_update_time', required=False, default=10, type=float,
-                        help='time in minutes between each event data update')
+    parser.add_argument(
+        '--events_update_time', required=False, default=10, type=float,
+        help='time in minutes between each event data update')
     parser.add_argument('-f', '--fullscreen', default=False,
                         action="store_true",
                         help='set to full screen on startup')
@@ -411,26 +423,23 @@ def main():
             print "Aborting."
             sys.exit()
 
-    # backtrace is now in second
-    args.backtrace_time = 3600 * args.backtrace_time
-
     now = UTCDateTime()
 
-    if any([x in args.seedlink_streams for x in ", ?*"]):
-        multichannel = True
+    if any([x in args.seedlink_streams for x in ", ?*"]) or args.plot_lines:
+        drum_plot = False
     else:
-        multichannel = False
+        drum_plot = True
 
-    if multichannel:
-        if args.time_tick_nb is None:
-            args.time_tick_nb = 5
-        if args.tick_format is None:
-            args.tick_format = '%H:%M:%S'
-    else:
+    if drum_plot:
         if args.time_tick_nb is None:
             args.time_tick_nb = 13
         if args.tick_format is None:
             args.tick_format = '%d/%m/%y %Hh'
+    else:
+        if args.time_tick_nb is None:
+            args.time_tick_nb = 5
+        if args.tick_format is None:
+            args.tick_format = '%H:%M:%S'
 
     stream = Stream()
     events = Catalog()
@@ -440,12 +449,12 @@ def main():
     cl = SeedlinkUpdater(stream, myargs=args, lock=lock)
     cl.slconn.setSLAddress(args.seedlink_server)
     cl.multiselect = args.seedlink_streams
-    if multichannel:
-        cl.begin_time = (now - args.backtrace_time).formatSeedLink()
-    else:
+    if drum_plot:
         round_start = UTCDateTime(now.year, now.month, now.day, now.hour, 0, 0)
         round_start = round_start + 3600 - args.backtrace_time
         cl.begin_time = (round_start).formatSeedLink()
+    else:
+        cl.begin_time = (now - args.backtrace_time).formatSeedLink()
     cl.initialize()
     ids = cl.getTraceIDs()
     # start cl in a thread
@@ -460,8 +469,11 @@ def main():
         thread.setDaemon(True)
         thread.start()
 
+    # Wait few seconds to get data
+    time.sleep(2)
+
     master = SeedlinkPlotter(stream=stream, events=events, myargs=args,
-                             lock=lock, multichannel=multichannel,
+                             lock=lock, drum_plot=drum_plot,
                              trace_ids=ids)
     master.mainloop()
 
