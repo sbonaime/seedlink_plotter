@@ -10,6 +10,10 @@ On some linux box, the time zone must be set to UTC and not GMT
 
     pip install https://github.com/bonaime/seedlink_plotter/archive/master.zip
 
+### Upgrade
+
+    pip install --upgrade https://github.com/bonaime/seedlink_plotter/archive/master.zip
+
 ### Usage examples
 
 Drum plots (with longer time range):
