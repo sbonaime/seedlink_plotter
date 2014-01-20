@@ -382,7 +382,7 @@ def main():
               'window is not controlled by the window manager and can only '
               'be closed by killing the respective process.'))
     parser.add_argument(
-        '--plot_lines', help='regular real time plot for single station', required=False, action='store_true')
+        '--line_plot', help='regular real time plot for single station', required=False, action='store_true')
     parser.add_argument(
         '--rainbow', help='', required=False, action='store_true')
     parser.add_argument(
@@ -425,7 +425,7 @@ def main():
 
     now = UTCDateTime()
 
-    if any([x in args.seedlink_streams for x in ", ?*"]) or args.plot_lines:
+    if any([x in args.seedlink_streams for x in ", ?*"]) or args.line_plot:
         drum_plot = False
     else:
         drum_plot = True
