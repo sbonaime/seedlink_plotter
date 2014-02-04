@@ -322,8 +322,8 @@ class EventUpdater():
         Method to fetch updated list of events to use in plot.
         """
         with self.lock:
-            start, end = self.stream[0].stats.starttime,
-            self.stream[0].stats.endtime
+            start = min([tr.stats.starttime for tr in self.stream])
+            end = max([tr.stats.endtime for tr in self.stream])
         c = Client()
         events = c.getEvents(min_datetime=start, max_datetime=end,
                              format="catalog",
