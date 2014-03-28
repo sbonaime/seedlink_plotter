@@ -20,7 +20,6 @@ from obspy.core.event import Catalog
 from obspy.neries import Client
 from argparse import ArgumentParser
 from math import sin
-import math
 import threading
 import time
 import warnings
@@ -28,9 +27,6 @@ import sys
 from urllib2 import URLError
 import logging
 import numpy as np
-import matplotlib.pylab as plt
-from obspy.realtime.rttrace import RtTrace
-
 
 
 class SeedlinkPlotter(Tkinter.Tk):
@@ -164,39 +160,6 @@ class SeedlinkPlotter(Tkinter.Tk):
                     stream.append(Trace(data=data, header=header))
         stream.sort()
         self.figure.clear()
-        #fig = self.figure
-        
-        Nrows = math.ceil(len(stream.traces) / 2.)
-        Nrows = len(stream.traces) 
-        
-        plt.clf() 
-        plt.cla() 
-        
-        for i in range(len(stream.traces)):
-            tr = stream.traces[i]
-            time = np.arange(tr.stats.npts) / tr.stats.sampling_rate
-#            plt.subplot(Nrows, 2, i+1)
-            ax = self.figure.add_subplot(Nrows, 1, i+1)
-            #plt.subplot(Nrows, 1, i+1)
-            ax.plot(time, tr.data, 'k')
-            
-        plt.ion()
-        plt.show()
-        print "pouet"
-       
-        #fig.canvas.draw()
-
-    def plot_lines_old(self, stream):
-        if self.ids:
-            for id_ in self.ids:
-                if not any([tr.id == id_ for tr in stream]):
-                    net, sta, loc, cha = id_.split(".")
-                    header = {'network': net, 'station': sta, 'location': loc,
-                              'channel': cha, 'starttime': self.start_time}
-                    data = np.zeros(2)
-                    stream.append(Trace(data=data, header=header))
-        stream.sort()
-        self.figure.clear()
         fig = self.figure
         stream.plot(fig=fig, method="fast", draw=False, equal_scale=False,
                     size=(self.args.x_size, self.args.y_size), title="", color='Blue', tick_format=self.args.tick_format, number_of_ticks=self.args.time_tick_nb)
@@ -258,7 +221,6 @@ class SeedlinkUpdater(SLClient):
         self.stream = stream
         self.lock = lock
         self.args = myargs
-        self.backtrace = myargs.backtrace_time
 
     def packetHandler(self, count, slpack):
         """
@@ -296,14 +258,9 @@ class SeedlinkUpdater(SLClient):
                 self.__class__.__name__ + ": blockette contains no trace")
             return False
 
-        #new RtTrace
-        rttrace=RtTrace(self.backtrace)
-        rttrace.append(trace)
         # new samples add to the main stream which is then trimmed
         with self.lock:
-            #self.stream += trace
-            self.stream += rttrace
-            
+            self.stream += trace
         return False
 
     def getTraceIDs(self):

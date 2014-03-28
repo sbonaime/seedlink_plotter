@@ -41,7 +41,7 @@ Line plots with multiple stations (with shorter time range):
 Keyboard controls only work without option `--without-decoration`!
 
  - `f`: toggle fullscreen
- - `<Escape>` or `q`: close window
+ - `<Escape>`: close window
 
 ### Dependencies
  - Python 2.7
