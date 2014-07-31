@@ -17,7 +17,7 @@ from matplotlib.patheffects import withStroke
 import matplotlib.pyplot as plt
 from obspy.core import UTCDateTime
 from obspy.core.event import Catalog
-from obspy.neries import Client
+from obspy.fdsn import Client
 from argparse import ArgumentParser
 from math import sin
 import threading
@@ -324,10 +324,9 @@ class EventUpdater():
         with self.lock:
             start = min([tr.stats.starttime for tr in self.stream])
             end = max([tr.stats.endtime for tr in self.stream])
-        c = Client()
-        events = c.getEvents(min_datetime=start, max_datetime=end,
-                             format="catalog",
-                             min_magnitude=self.args.events)
+        c = Client(base_url="NERIES")
+        events = c.get_events(starttime=start, endtime=end,
+                              minmagnitude=self.args.events)
         return events
 
     def update_events(self, events):
