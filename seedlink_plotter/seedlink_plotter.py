@@ -324,7 +324,7 @@ class EventUpdater():
         with self.lock:
             start = min([tr.stats.starttime for tr in self.stream])
             end = max([tr.stats.endtime for tr in self.stream])
-        c = Client(base_url="NERIES")
+        c = Client("NERIES")
         events = c.get_events(starttime=start, endtime=end,
                               minmagnitude=self.args.events)
         return events
