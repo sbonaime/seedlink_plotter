@@ -75,8 +75,8 @@ class SeedlinkPlotter(Tkinter.Tk):
             self.color = self.rainbow_color_generator(
                 int(args.nb_rainbow_colors))
         else:
-            # Regular colors
-            self.color = ('#000000', '#ff0000', '#0000ff', '#56a83c')
+            # Regular colors: Black, Red, Blue, Green
+            self.color = ('#000000', '#e50000', '#0000e5', '#448630')
 
         self.plot_graph()
 
