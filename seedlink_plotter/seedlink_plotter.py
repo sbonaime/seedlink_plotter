@@ -29,6 +29,19 @@ import logging
 import numpy as np
 
 
+# check obspy version and warn if it's below 0.10.0, which means that a memory
+# leak is present in the used seedlink client (unless working on some master
+# branch version after obspy/obspy@5ce975c3710ca, which is impossible to check
+# reliably). see #7 and obspy/obspy#918.
+from obspy import __version__ as OBSPY_VERSION
+if map(int, OBSPY_VERSION.split("-")[0].split(".")) < [0, 10, 0]:
+    msg = ("ObsPy version < 0.10.0 has a memory leak in SeedLink Client. "
+           "Please update your ObsPy installation to avoid being affected "
+           "by the memory leak (see "
+           "https://github.com/bonaime/seedlink_plotter/issues/7).")
+    warnings.warn(msg)
+
+
 class SeedlinkPlotter(Tkinter.Tk):
 
     """
