@@ -15,6 +15,7 @@ from matplotlib.figure import Figure
 from matplotlib.ticker import MaxNLocator
 from matplotlib.patheffects import withStroke
 import matplotlib.pyplot as plt
+from matplotlib.mlab import detrend_linear
 from obspy.core import UTCDateTime
 from obspy.core.event import Catalog
 from obspy.fdsn import Client
@@ -125,7 +126,7 @@ class SeedlinkPlotter(Tkinter.Tk):
         try:
             stream.merge()
             stream.trim(starttime=self.start_time, endtime=self.stop_time,
-                        pad=True, nearest_sample=False)
+                        pad=False, nearest_sample=False)
             logging.info(str(stream.split()))
             if not stream:
                 raise Exception("Empty stream for plotting")
@@ -172,10 +173,28 @@ class SeedlinkPlotter(Tkinter.Tk):
                     data = np.zeros(2)
                     stream.append(Trace(data=data, header=header))
         stream.sort()
-        self.figure.clear()
+        #self.figure.clear()
         fig = self.figure
-        stream.plot(fig=fig, method="fast", draw=False, equal_scale=False,
-                    size=(self.args.x_size, self.args.y_size), title="", color='Blue', tick_format=self.args.tick_format, number_of_ticks=self.args.time_tick_nb)
+        for ax in fig.axes:
+            ax.lines = ax.lines[-10:]
+            for line, alpha in zip(ax.lines, np.linspace(0, 1, len(ax.lines)+2)[1:-1]):
+                line.set_alpha(alpha)
+                line.set_lw(line.get_lw() * alpha)
+        if not stream:
+            return
+        for i, tr in enumerate(stream):
+            ax = fig.add_subplot(len(stream), 1, i+1)
+            if len(tr) == 0:
+                continue
+            nfft = int(len(tr) * 0.4)
+            logging.debug("nfft:", str(nfft))
+            overlap = 0.80
+            noverlap = int(nfft * overlap)
+            logging.debug(str(tr))
+            ax.psd(tr.data, NFFT=nfft, Fs=tr.stats.sampling_rate,
+                   detrend=detrend_linear, noverlap=noverlap, color="b")
+            #ax.set_xscale('log')
+            ax.set_xlim(10, 70)
         fig.subplots_adjust(left=0, right=1, top=1, bottom=0)
         bbox = dict(boxstyle="round", fc="w", alpha=0.8)
         path_effects = [withStroke(linewidth=4, foreground="w")]
@@ -200,8 +219,8 @@ class SeedlinkPlotter(Tkinter.Tk):
                 plt.setp(xlabels, visible=False)
             locator = MaxNLocator(nbins=4, prune="both")
             ax.yaxis.set_major_locator(locator)
-            ax.yaxis.grid(False)
             ax.grid(True, axis="x")
+            ax.grid(True, axis="y")
         for ax in fig.axes[::2]:
             ax.set_axis_bgcolor("0.8")
         fig.canvas.draw()
