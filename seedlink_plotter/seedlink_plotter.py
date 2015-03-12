@@ -7,6 +7,7 @@ matplotlib.rc('figure.subplot', hspace=0)
 matplotlib.rc('font', family="monospace")
 
 from obspy import Stream, Trace
+from obspy import __version__ as OBSPY_VERSION
 import Tkinter
 from obspy.seedlink.slpacket import SLPacket
 from obspy.seedlink.slclient import SLClient
@@ -14,6 +15,7 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
 from matplotlib.ticker import MaxNLocator
 from matplotlib.patheffects import withStroke
+from matplotlib.dates import date2num
 import matplotlib.pyplot as plt
 from obspy.core import UTCDateTime
 from obspy.core.event import Catalog
@@ -29,12 +31,12 @@ import logging
 import numpy as np
 
 
+OBSPY_VERSION = map(int, OBSPY_VERSION.split(".")[:3])
 # check obspy version and warn if it's below 0.10.0, which means that a memory
 # leak is present in the used seedlink client (unless working on some master
 # branch version after obspy/obspy@5ce975c3710ca, which is impossible to check
 # reliably). see #7 and obspy/obspy#918.
-from obspy import __version__ as OBSPY_VERSION
-if map(int, OBSPY_VERSION.split("-")[0].split(".")) < [0, 10, 0]:
+if OBSPY_VERSION < [0, 10, 0]:
     msg = ("ObsPy version < 0.10.0 has a memory leak in SeedLink Client. "
            "Please update your ObsPy installation to avoid being affected "
            "by the memory leak (see "
@@ -123,13 +125,17 @@ class SeedlinkPlotter(Tkinter.Tk):
             stream = self.stream.copy()
 
         try:
-            stream.merge()
-            stream.trim(starttime=self.start_time, endtime=self.stop_time,
-                        pad=True, nearest_sample=False)
             logging.info(str(stream.split()))
             if not stream:
                 raise Exception("Empty stream for plotting")
 
+            if self.drum_plot or OBSPY_VERSION < [0, 10]:
+                stream.merge()
+                stream.trim(starttime=self.start_time, endtime=self.stop_time,
+                            pad=True, nearest_sample=False)
+            else:
+                stream.merge(-1)
+                stream.trim(starttime=self.start_time, endtime=self.stop_time)
             if self.drum_plot:
                 self.plot_drum(stream)
             else:
@@ -163,14 +169,13 @@ class SeedlinkPlotter(Tkinter.Tk):
             events=self.events)
 
     def plot_lines(self, stream):
-        if self.ids:
-            for id_ in self.ids:
-                if not any([tr.id == id_ for tr in stream]):
-                    net, sta, loc, cha = id_.split(".")
-                    header = {'network': net, 'station': sta, 'location': loc,
-                              'channel': cha, 'starttime': self.start_time}
-                    data = np.zeros(2)
-                    stream.append(Trace(data=data, header=header))
+        for id_ in self.ids:
+            if not any([tr.id == id_ for tr in stream]):
+                net, sta, loc, cha = id_.split(".")
+                header = {'network': net, 'station': sta, 'location': loc,
+                          'channel': cha, 'starttime': self.start_time}
+                data = np.zeros(2)
+                stream.append(Trace(data=data, header=header))
         stream.sort()
         self.figure.clear()
         fig = self.figure
@@ -180,10 +185,14 @@ class SeedlinkPlotter(Tkinter.Tk):
         bbox = dict(boxstyle="round", fc="w", alpha=0.8)
         path_effects = [withStroke(linewidth=4, foreground="w")]
         pad = 10
-        for tr, ax in zip(stream, fig.axes):
+        for ax in fig.axes[::2]:
+            ax.set_axis_bgcolor("0.8")
+        for id_, ax in zip(self.ids, fig.axes):
             ax.set_title("")
-            ax.text(0.1, 0.9, tr.id, va="top", ha="left",
-                    transform=ax.transAxes, bbox=bbox, size=self.args.title_size)
+            if OBSPY_VERSION < [0, 10]:
+                ax.text(0.1, 0.9, id_, va="top", ha="left",
+                        transform=ax.transAxes, bbox=bbox,
+                        size=self.args.title_size)
             xlabels = ax.get_xticklabels()
             ylabels = ax.get_yticklabels()
             plt.setp(ylabels, ha="left", path_effects=path_effects)
@@ -192,8 +201,9 @@ class SeedlinkPlotter(Tkinter.Tk):
             if ax is fig.axes[-1]:
                 plt.setp(
                     xlabels, va="bottom", size=self.args.time_legend_size, bbox=bbox)
-                plt.setp(xlabels[:1], ha="left")
-                plt.setp(xlabels[-1:], ha="right")
+                if OBSPY_VERSION < [0, 10]:
+                    plt.setp(xlabels[:1], ha="left")
+                    plt.setp(xlabels[-1:], ha="right")
                 ax.xaxis.set_tick_params(pad=-pad)
             # all other axes
             else:
@@ -202,8 +212,17 @@ class SeedlinkPlotter(Tkinter.Tk):
             ax.yaxis.set_major_locator(locator)
             ax.yaxis.grid(False)
             ax.grid(True, axis="x")
-        for ax in fig.axes[::2]:
-            ax.set_axis_bgcolor("0.8")
+            if len(ax.lines) == 1:
+                ydata = ax.lines[0].get_ydata()
+                if len(ydata) == 4 and not ydata.any():
+                    plt.setp(ylabels, visible=False)
+                    ax.set_axis_bgcolor("#ff6666")
+        if OBSPY_VERSION >= [0, 10]:
+            fig.axes[0].set_xlim(right=date2num(self.stop_time))
+        if len(fig.axes) > 5:
+            bbox["alpha"] = 0.6
+        fig.text(0.98, 0.98, self.stop_time.strftime("%Y-%m-%d %H:%M:%S UTC"),
+                 ha="right", va="top", bbox=bbox, fontsize="large")
         fig.canvas.draw()
 
     # converter for the colors gradient
@@ -274,6 +293,7 @@ class SeedlinkUpdater(SLClient):
         # new samples add to the main stream which is then trimmed
         with self.lock:
             self.stream += trace
+            self.stream.merge(-1)
         return False
 
     def getTraceIDs(self):
