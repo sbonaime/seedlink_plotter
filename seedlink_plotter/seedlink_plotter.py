@@ -214,7 +214,10 @@ class SeedlinkPlotter(Tkinter.Tk):
             ax.grid(True, axis="x")
             if len(ax.lines) == 1:
                 ydata = ax.lines[0].get_ydata()
-                if len(ydata) == 4 and not ydata.any():
+                # if station has no data we add a dummy trace and we end up in
+                # a line with either 2 or 4 zeros (2 if dummy line is cut off
+                # at left edge of time axis)
+                if len(ydata) in [4, 2] and not ydata.any():
                     plt.setp(ylabels, visible=False)
                     ax.set_axis_bgcolor("#ff6666")
         if OBSPY_VERSION >= [0, 10]:
