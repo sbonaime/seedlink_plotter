@@ -179,6 +179,10 @@ class SeedlinkPlotter(Tkinter.Tk):
         stream.sort()
         self.figure.clear()
         fig = self.figure
+        # avoid the differing trace.processing attributes prohibiting to plot
+        # single traces of one id together.
+        for tr in stream:
+            tr.stats.processing = []
         stream.plot(fig=fig, method="fast", draw=False, equal_scale=False,
                     size=(self.args.x_size, self.args.y_size), title="", color='Blue', tick_format=self.args.tick_format, number_of_ticks=self.args.time_tick_nb)
         fig.subplots_adjust(left=0, right=1, top=1, bottom=0)
