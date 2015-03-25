@@ -161,7 +161,7 @@ class SeedlinkPlotter(Tkinter.Tk):
             title=title, title_size=14,
             linewidth=0.5, right_vertical_labels=False,
             vertical_scaling_range=self.args.scale,
-            subplots_adjust_left=0.03, subplots_adjust_right=0.99,
+            subplots_adjust_left=0.04, subplots_adjust_right=0.99,
             subplots_adjust_top=0.95, subplots_adjust_bottom=0.1,
             one_tick_per_line=True,
             color=self.color,
