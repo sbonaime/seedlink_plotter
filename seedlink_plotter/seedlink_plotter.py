@@ -228,8 +228,8 @@ class SeedlinkPlotter(Tkinter.Tk):
             fig.axes[0].set_xlim(right=date2num(self.stop_time))
         if len(fig.axes) > 5:
             bbox["alpha"] = 0.6
-        fig.text(0.98, 0.98, self.stop_time.strftime("%Y-%m-%d %H:%M:%S UTC"),
-                 ha="right", va="top", bbox=bbox, fontsize="large")
+        fig.text(0.99, 0.97, self.stop_time.strftime("%Y-%m-%d %H:%M:%S UTC"),
+                 ha="right", va="top", bbox=bbox, fontsize="medium")
         fig.canvas.draw()
 
     # converter for the colors gradient
