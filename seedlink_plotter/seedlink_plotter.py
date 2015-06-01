@@ -379,6 +379,63 @@ class EventUpdater():
             self.events.extend(events)
 
 
+def _parse_time_with_suffix_to_seconds(timestring):
+    """
+    Parse a string to seconds as float.
+
+    If string can be directly converted to a float it is interpreted as
+    seconds. Otherwise the following suffixes can be appended, case
+    insensitive: "s" for seconds, "m" for minutes, "h" for hours, "d" for days.
+
+    >>> _parse_time_with_suffix_to_seconds("12.6")
+    12.6
+    >>> _parse_time_with_suffix_to_seconds("12.6s")
+    12.6
+    >>> _parse_time_with_suffix_to_minutes("12.6m")
+    756.0
+    >>> _parse_time_with_suffix_to_seconds("12.6h")
+    45360.0
+
+    :type timestring: str
+    :param timestring: "s" for seconds, "m" for minutes, "h" for hours, "d" for
+        days.
+    :rtype: float
+    """
+    try:
+        return float(timestring)
+    except:
+        pass
+    timestring, suffix = timestring[:-1], timestring[-1].lower()
+    mult = {'s': 1.0, 'm': 60.0, 'h': 3600.0, 'd': 3600.0 * 24}[suffix]
+    return float(timestring) * mult
+
+
+def _parse_time_with_suffix_to_minutes(timestring):
+    """
+    Parse a string to minutes as float.
+
+    If string can be directly converted to a float it is interpreted as
+    minutes. Otherwise the following suffixes can be appended, case
+    insensitive: "s" for seconds, "m" for minutes, "h" for hours, "d" for days.
+
+    >>> _parse_time_with_suffix_to_minutes("12.6")
+    12.6
+    >>> _parse_time_with_suffix_to_minutes("12.6s")
+    0.21
+    >>> _parse_time_with_suffix_to_minutes("12.6m")
+    12.6
+    >>> _parse_time_with_suffix_to_minutes("12.6h")
+    756.0
+
+    :type timestring: str
+    :param timestring: "s" for seconds, "m" for minutes, "h" for hours, "d" for
+        days.
+    :rtype: float
+    """
+    seconds = _parse_time_with_suffix_to_seconds(timestring)
+    return seconds / 60.0
+
+
 def main():
     parser = ArgumentParser(prog='seedlink_plotter',
                             description='Plot a realtime seismogram drum of a station')
@@ -397,9 +454,16 @@ def main():
     parser.add_argument('--seedlink_server', type=str,
                         help='the seedlink server to connect to with port. ex: rtserver.ipgp.fr:18000 ', required=True)
     parser.add_argument(
-        '--x_scale', type=int, help='the number of minute to plot per line', default=60)
-    parser.add_argument('-b', '--backtrace_time', type=float,
-                        help='the number of seconds to plot (3600=1h,86400=24h)', required=True)
+        '--x_scale', type=_parse_time_with_suffix_to_minutes,
+        help='the number of minute to plot per line'
+             ' The following suffixes can be used as well: "s" for seconds, '
+             '"m" for minutes, "h" for hours and "d" for days.',
+        default=60)
+    parser.add_argument('-b', '--backtrace_time',
+            help='the number of seconds to plot (3600=1h,86400=24h). The '
+                 'following suffixes can be used as well: "m" for minutes, '
+                 '"h" for hours and "d" for days.', required=True,
+                 type=_parse_time_with_suffix_to_seconds)
     parser.add_argument('--x_position', type=int,
                         help='the x position of the graph', required=False, default=0)
     parser.add_argument('--y_position', type=int,
@@ -428,12 +492,20 @@ def main():
     parser.add_argument(
         '--nb_rainbow_colors', help='the numbers of colors for rainbow mode', required=False, default=10)
     parser.add_argument(
-        '--update_time', help='time in seconds between each graphic update', required=False, default=10, type=float)
+            '--update_time',
+            help='time in seconds between each graphic update.'
+            ' The following suffixes can be used as well: "s" for seconds, '
+            '"m" for minutes, "h" for hours and "d" for days.',
+            required=False, default=10,
+            type=_parse_time_with_suffix_to_seconds)
     parser.add_argument('--events', required=False, default=None, type=float,
                         help='plot events using obspy.neries, specify minimum magnitude')
     parser.add_argument(
-        '--events_update_time', required=False, default=10, type=float,
-        help='time in minutes between each event data update')
+        '--events_update_time', required=False, default=10,
+        help='time in minutes between each event data update. '
+             ' The following suffixes can be used as well: "s" for seconds, '
+             '"m" for minutes, "h" for hours and "d" for days.',
+        type=_parse_time_with_suffix_to_minutes)
     parser.add_argument('-f', '--fullscreen', default=False,
                         action="store_true",
                         help='set to full screen on startup')
