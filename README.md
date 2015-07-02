@@ -2,7 +2,7 @@
 
 A python script to plot real time seismic data from a seedlink server in drum style or line style
 
-This version work with the latest stable ObsPy version (0.9.0).
+This version works with at least stable ObsPy version 0.9.0
 
 On some linux box, the time zone must be set to UTC and not GMT
 
