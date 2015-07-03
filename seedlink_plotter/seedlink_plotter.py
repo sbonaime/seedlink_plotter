@@ -9,8 +9,6 @@ matplotlib.rc('font', family="monospace")
 from obspy import Stream, Trace
 from obspy import __version__ as OBSPY_VERSION
 import Tkinter
-from obspy.seedlink.slpacket import SLPacket
-from obspy.seedlink.slclient import SLClient
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
 from matplotlib.ticker import MaxNLocator
@@ -19,7 +17,6 @@ from matplotlib.dates import date2num
 import matplotlib.pyplot as plt
 from obspy.core import UTCDateTime
 from obspy.core.event import Catalog
-from obspy.fdsn import Client
 from argparse import ArgumentParser
 from math import sin
 import threading
@@ -37,12 +34,21 @@ OBSPY_VERSION = map(int, OBSPY_VERSION.split(".")[:2])
 # leak is present in the used seedlink client (unless working on some master
 # branch version after obspy/obspy@5ce975c3710ca, which is impossible to check
 # reliably). see #7 and obspy/obspy#918.
+# make imports depending of the obspy version
 if OBSPY_VERSION < [0, 10]:
     msg = ("ObsPy version < 0.10.0 has a memory leak in SeedLink Client. "
            "Please update your ObsPy installation to avoid being affected "
            "by the memory leak (see "
            "https://github.com/bonaime/seedlink_plotter/issues/7).")
     warnings.warn(msg)
+    
+    from obspy.seedlink.slpacket import SLPacket
+    from obspy.seedlink.slclient import SLClient
+    from obspy.fdsn import Client
+else:
+    from obspy.clients.seedlink.slpacket import SLPacket
+    from obspy.clients.seedlink import SLClient
+    from obspy.clients.fdsn import Client
 
 
 # Compatibility checks
