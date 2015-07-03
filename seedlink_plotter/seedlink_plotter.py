@@ -459,10 +459,10 @@ def main():
              '"m" for minutes, "h" for hours and "d" for days.',
         default=60)
     parser.add_argument('-b', '--backtrace_time',
-            help='the number of seconds to plot (3600=1h,86400=24h). The '
-                 'following suffixes can be used as well: "m" for minutes, '
-                 '"h" for hours and "d" for days.', required=True,
-                 type=_parse_time_with_suffix_to_seconds)
+                        help='the number of seconds to plot (3600=1h,86400=24h). The '
+                        'following suffixes can be used as well: "m" for minutes, '
+                        '"h" for hours and "d" for days.', required=True,
+                        type=_parse_time_with_suffix_to_seconds)
     parser.add_argument('--x_position', type=int,
                         help='the x position of the graph', required=False, default=0)
     parser.add_argument('--y_position', type=int,
@@ -491,12 +491,12 @@ def main():
     parser.add_argument(
         '--nb_rainbow_colors', help='the numbers of colors for rainbow mode', required=False, default=10)
     parser.add_argument(
-            '--update_time',
-            help='time in seconds between each graphic update.'
-            ' The following suffixes can be used as well: "s" for seconds, '
-            '"m" for minutes, "h" for hours and "d" for days.',
-            required=False, default=10,
-            type=_parse_time_with_suffix_to_seconds)
+        '--update_time',
+        help='time in seconds between each graphic update.'
+        ' The following suffixes can be used as well: "s" for seconds, '
+        '"m" for minutes, "h" for hours and "d" for days.',
+        required=False, default=10,
+        type=_parse_time_with_suffix_to_seconds)
     parser.add_argument('--events', required=False, default=None, type=float,
                         help='plot events using obspy.neries, specify minimum magnitude')
     parser.add_argument(
@@ -516,6 +516,15 @@ def main():
                              'when opening a window without decoration')
     # parse the arguments
     args = parser.parse_args()
+
+    print args.backtrace_time
+    print args.x_scale
+
+    # Check x_scale and backtrace_time in drum plot mode
+    if not args.line_plot and (args.backtrace_time % args.x_scale):
+        print"Backtrace_time should be a multiple of x_scale (default 60m)"
+        print "Aborting."
+        sys.exit()
 
     if args.verbose:
         loglevel = logging.DEBUG
