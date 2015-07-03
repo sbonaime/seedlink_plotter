@@ -77,7 +77,7 @@ except AttributeError:
 try:
     SLPacket.getType
 except AttributeError:
-  # create the new packetHandler fonction using the old packet_handler method
+  # create the new getType fonction using the old get_type method
     def getType(self):
         return self.get_type()
     # add the function in the class
@@ -86,7 +86,7 @@ except AttributeError:
 try:
     SLPacket.getTrace
 except AttributeError:
-  # create the new packetHandler fonction using the old packet_handler method
+  # create the new getTrace fonction using the old get_trace method
     def getTrace(self):
         return self.get_trace()
     # add the function in the class
