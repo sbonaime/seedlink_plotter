@@ -32,7 +32,6 @@ import numpy as np
 
 
 OBSPY_VERSION = map(int, OBSPY_VERSION.split(".")[:2])
-OBSPY_VERSION = [0, 10]
 # check obspy version and warn if it's below 0.10.0, which means that a memory
 # leak is present in the used seedlink client (unless working on some master
 # branch version after obspy/obspy@5ce975c3710ca, which is impossible to check
