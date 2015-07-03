@@ -46,7 +46,6 @@ if OBSPY_VERSION < [0, 10]:
 
 
 # Compatibility checks
-
 # UTCDateTime
 try:
     UTCDateTime.format_seedlink
