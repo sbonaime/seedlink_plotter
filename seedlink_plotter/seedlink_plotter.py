@@ -46,16 +46,48 @@ if OBSPY_VERSION < [0, 10]:
 
 
 # Compatibility checks
+
+# UTCDateTime
 try:
-    UTCDateTime.format_seedlink     
+    UTCDateTime.format_seedlink
 except AttributeError:
-    #create the new format_seedlink fonction using the old formatSeedLink method
+    # create the new format_seedlink fonction using the old formatSeedLink
+    # method
     def format_seedlink(self):
-        return self.formatSeedLink()        
+        return self.formatSeedLink()
     # add the function in the class
-    setattr(UTCDateTime, 'format_seedlink',format_seedlink)
-    
-    
+    setattr(UTCDateTime, 'format_seedlink', format_seedlink)
+
+# SLClient
+try:
+    SLClient.packetHandler
+except AttributeError:
+  # create the new packetHandler fonction using the old packet_handler method
+    def packetHandler(self):
+        return self.packet_handler()
+    # add the function in the class
+    setattr(SLClient, 'packetHandler', packetHandler)
+
+# SLPacket
+try:
+    SLPacket.getType
+except AttributeError:
+  # create the new packetHandler fonction using the old packet_handler method
+    def getType(self):
+        return self.get_type()
+    # add the function in the class
+    setattr(SLPacket, 'getType', getType)
+
+try:
+    SLPacket.getTrace
+except AttributeError:
+  # create the new packetHandler fonction using the old packet_handler method
+    def getTrace(self):
+        return self.get_trace()
+    # add the function in the class
+    setattr(SLPacket, 'getTrace', getTrace)
+
+
 class SeedlinkPlotter(Tkinter.Tk):
 
     """
@@ -273,7 +305,7 @@ class SeedlinkUpdater(SLClient):
         self.lock = lock
         self.args = myargs
 
-    def packetHandler(self, count, slpack):
+    def packet_handler(self, count, slpack):
         """
         Processes each packet received from the SeedLinkConnection.
         :type count: int
@@ -470,10 +502,10 @@ def main():
              '"m" for minutes, "h" for hours and "d" for days.',
         default=60)
     parser.add_argument('-b', '--backtrace_time',
-            help='the number of seconds to plot (3600=1h,86400=24h). The '
-                 'following suffixes can be used as well: "m" for minutes, '
-                 '"h" for hours and "d" for days.', required=True,
-                 type=_parse_time_with_suffix_to_seconds)
+                        help='the number of seconds to plot (3600=1h,86400=24h). The '
+                        'following suffixes can be used as well: "m" for minutes, '
+                        '"h" for hours and "d" for days.', required=True,
+                        type=_parse_time_with_suffix_to_seconds)
     parser.add_argument('--x_position', type=int,
                         help='the x position of the graph', required=False, default=0)
     parser.add_argument('--y_position', type=int,
@@ -502,12 +534,12 @@ def main():
     parser.add_argument(
         '--nb_rainbow_colors', help='the numbers of colors for rainbow mode', required=False, default=10)
     parser.add_argument(
-            '--update_time',
-            help='time in seconds between each graphic update.'
-            ' The following suffixes can be used as well: "s" for seconds, '
-            '"m" for minutes, "h" for hours and "d" for days.',
-            required=False, default=10,
-            type=_parse_time_with_suffix_to_seconds)
+        '--update_time',
+        help='time in seconds between each graphic update.'
+        ' The following suffixes can be used as well: "s" for seconds, '
+        '"m" for minutes, "h" for hours and "d" for days.',
+        required=False, default=10,
+        type=_parse_time_with_suffix_to_seconds)
     parser.add_argument('--events', required=False, default=None, type=float,
                         help='plot events using obspy.neries, specify minimum magnitude')
     parser.add_argument(
