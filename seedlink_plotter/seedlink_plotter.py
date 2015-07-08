@@ -192,9 +192,8 @@ class SeedlinkPlotter(Tkinter.Tk):
             title += ' - autoscale -'
         title += " without filtering"
         self.figure.clear()
-        print self.args.x_scale
         stream.plot(
-            fig=self.figure, type='dayplot', interval=int(self.args.x_scale),
+            fig=self.figure, type='dayplot', interval=self.args.x_scale,
             number_of_ticks=self.args.time_tick_nb, tick_format=self.args.tick_format,
             size=(self.args.x_size, self.args.y_size),
             x_labels_size=8, y_labels_size=8,
