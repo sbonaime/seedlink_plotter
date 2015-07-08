@@ -40,8 +40,8 @@ if OBSPY_VERSION < [0, 10]:
     warnings.warn(warning_msg)
 elif OBSPY_VERSION == [0, 10]:
     # Check if OBSPY_VERSION < 0.10.2
-    from obspy import __version__ as OBSPY_VERSION
-    if int(OBSPY_VERSION[5:6]) <= 2:
+    from obspy import __version__ as OBSPY_VERSION_small
+    if int(OBSPY_VERSION_small[5:6]) <= 2:
         # 0.10.0 0.10.1 0.10.2
         from obspy.seedlink.slpacket import SLPacket
         from obspy.seedlink.slclient import SLClient
