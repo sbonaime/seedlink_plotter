@@ -114,7 +114,6 @@ class SeedlinkPlotter(Tkinter.Tk):
         canvas.show()
         canvas.get_tk_widget().pack(fill=Tkinter.BOTH, expand=1)
 
-        self.interval = args.x_scale
         self.backtrace = args.backtrace_time
         self.canvas = canvas
         self.scale = args.scale
@@ -193,8 +192,9 @@ class SeedlinkPlotter(Tkinter.Tk):
             title += ' - autoscale -'
         title += " without filtering"
         self.figure.clear()
+        print self.args.x_scale
         stream.plot(
-            fig=self.figure, type='dayplot', interval=self.args.x_scale,
+            fig=self.figure, type='dayplot', interval=int(self.args.x_scale),
             number_of_ticks=self.args.time_tick_nb, tick_format=self.args.tick_format,
             size=(self.args.x_size, self.args.y_size),
             x_labels_size=8, y_labels_size=8,
@@ -459,10 +459,9 @@ def _parse_time_with_suffix_to_seconds(timestring):
     try:
         return float(timestring)
     except:
-        pass
-    timestring, suffix = timestring[:-1], timestring[-1].lower()
-    mult = {'s': 1.0, 'm': 60.0, 'h': 3600.0, 'd': 3600.0 * 24}[suffix]
-    return float(timestring) * mult
+        timestring, suffix = timestring[:-1], timestring[-1].lower()
+        mult = {'s': 1.0, 'm': 60.0, 'h': 3600.0, 'd': 3600.0 * 24}[suffix]
+        return float(timestring) * mult
 
 
 def _parse_time_with_suffix_to_minutes(timestring):
@@ -487,7 +486,10 @@ def _parse_time_with_suffix_to_minutes(timestring):
         days.
     :rtype: float
     """
-    seconds = _parse_time_with_suffix_to_seconds(timestring)
+    try:
+        return float(timestring)
+    except:
+        seconds = _parse_time_with_suffix_to_seconds(timestring)
     return seconds / 60.0
 
 
