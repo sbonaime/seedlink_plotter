@@ -518,10 +518,15 @@ def main():
     args = parser.parse_args()
 
  # Check x_scale and backtrace_time in drum plot mode
-    if not args.line_plot and (args.backtrace_time % args.x_scale):
+    if not args.line_plot and (args.backtrace_time % (args.x_scale*60)):
         print"Backtrace_time should be a multiple of x_scale (default 60m)"
         print "Aborting."
         sys.exit()
+    if not args.line_plot and (args.backtrace_time % (args.x_scale*60)):
+        print"Backtrace_time should be a multiple of x_scale (default 60m)"
+        print "Aborting."
+        sys.exit()
+
 
     if args.verbose:
         loglevel = logging.DEBUG
