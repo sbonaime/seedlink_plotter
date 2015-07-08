@@ -1,25 +1,20 @@
 #!/usr/bin/env python
-
 import matplotlib
 # Set the backend for matplotlib.
 matplotlib.use("TkAgg")
 matplotlib.rc('figure.subplot', hspace=0)
 matplotlib.rc('font', family="monospace")
-
-from obspy import Stream, Trace
-from obspy import __version__ as OBSPY_VERSION
 import Tkinter
-from obspy.seedlink.slpacket import SLPacket
-from obspy.seedlink.slclient import SLClient
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
 from matplotlib.ticker import MaxNLocator
 from matplotlib.patheffects import withStroke
 from matplotlib.dates import date2num
 import matplotlib.pyplot as plt
+from obspy import Stream, Trace
+from obspy import __version__ as OBSPY_VERSION
 from obspy.core import UTCDateTime
 from obspy.core.event import Catalog
-from obspy.fdsn import Client
 from argparse import ArgumentParser
 from math import sin
 import threading
@@ -36,12 +31,55 @@ OBSPY_VERSION = map(int, OBSPY_VERSION.split(".")[:2])
 # leak is present in the used seedlink client (unless working on some master
 # branch version after obspy/obspy@5ce975c3710ca, which is impossible to check
 # reliably). see #7 and obspy/obspy#918.
+# imports depend of the obspy version
 if OBSPY_VERSION < [0, 10]:
-    msg = ("ObsPy version < 0.10.0 has a memory leak in SeedLink Client. "
-           "Please update your ObsPy installation to avoid being affected "
-           "by the memory leak (see "
-           "https://github.com/bonaime/seedlink_plotter/issues/7).")
-    warnings.warn(msg)
+    warning_msg = ("ObsPy version < 0.10.0 has a memory leak in SeedLink Client. "
+                   "Please update your ObsPy installation to avoid being affected "
+                   "by the memory leak (see "
+                   "https://github.com/bonaime/seedlink_plotter/issues/7).")
+    warnings.warn(warning_msg)
+elif OBSPY_VERSION == [0, 10]:
+    # Check if OBSPY_VERSION < 0.10.2
+    from obspy import __version__ as OBSPY_VERSION_small
+    if int(OBSPY_VERSION_small[5:6]) <= 2:
+        # 0.10.0 0.10.1 0.10.2
+        from obspy.seedlink.slpacket import SLPacket
+        from obspy.seedlink.slclient import SLClient
+        from obspy.fdsn import Client
+    else:
+        from obspy.clients.seedlink.slpacket import SLPacket
+        from obspy.clients.seedlink import SLClient
+        from obspy.clients.fdsn import Client
+
+# Compatibility checks
+# UTCDateTime
+try:
+    UTCDateTime.format_seedlink
+except AttributeError:
+    # create the new format_seedlink fonction using the old formatSeedLink
+    # method
+    def format_seedlink(self):
+        return self.formatSeedLink()
+    # add the function in the class
+    setattr(UTCDateTime, 'format_seedlink', format_seedlink)
+# SLPacket
+try:
+    SLPacket.get_type
+except AttributeError:
+  # create the new get_type fonction using the old getType method
+    def get_type(self):
+        return self.getType()
+    # add the function in the class
+    setattr(SLPacket, 'get_type', get_type)
+
+try:
+    SLPacket.get_trace
+except AttributeError:
+  # create the new get_trace fonction using the old getTrace method
+    def get_trace(self):
+        return self.getTrace()
+    # add the function in the class
+    setattr(SLPacket, 'get_trace', get_trace)
 
 
 class SeedlinkPlotter(Tkinter.Tk):
@@ -50,7 +88,8 @@ class SeedlinkPlotter(Tkinter.Tk):
     This module plots realtime seismic data from a Seedlink server
     """
 
-    def __init__(self, stream=None, events=None, myargs=None, lock=None, drum_plot=True, trace_ids=None, *args, **kwargs):
+    def __init__(self, stream=None, events=None, myargs=None, lock=None,
+                 drum_plot=True, trace_ids=None, *args, **kwargs):
         Tkinter.Tk.__init__(self, *args, **kwargs)
         self.focus_set()
         self._bind_keys()
@@ -74,7 +113,6 @@ class SeedlinkPlotter(Tkinter.Tk):
         canvas.show()
         canvas.get_tk_widget().pack(fill=Tkinter.BOTH, expand=1)
 
-        self.interval = args.x_scale
         self.backtrace = args.backtrace_time
         self.canvas = canvas
         self.scale = args.scale
@@ -184,7 +222,9 @@ class SeedlinkPlotter(Tkinter.Tk):
         for tr in stream:
             tr.stats.processing = []
         stream.plot(fig=fig, method="fast", draw=False, equal_scale=False,
-                    size=(self.args.x_size, self.args.y_size), title="", color='Blue', tick_format=self.args.tick_format, number_of_ticks=self.args.time_tick_nb)
+                    size=(self.args.x_size, self.args.y_size), title="",
+                    color='Blue', tick_format=self.args.tick_format,
+                    number_of_ticks=self.args.time_tick_nb)
         fig.subplots_adjust(left=0, right=1, top=1, bottom=0)
         bbox = dict(boxstyle="round", fc="w", alpha=0.8)
         path_effects = [withStroke(linewidth=4, foreground="w")]
@@ -232,12 +272,17 @@ class SeedlinkPlotter(Tkinter.Tk):
                  ha="right", va="top", bbox=bbox, fontsize="medium")
         fig.canvas.draw()
 
-    # converter for the colors gradient
     def rgb_to_hex(self, red_value, green_value, blue_value):
+        """
+            converter for the colors gradient
+        """
         return '#%02X%02X%02X' % (red_value, green_value, blue_value)
 
-        # Rainbow color generator
+        
     def rainbow_color_generator(self, max_color):
+        """
+            Rainbow color generator
+        """
         color_list = []
         frequency = 0.3
         for compteur_lignes in xrange(max_color):
@@ -261,6 +306,13 @@ class SeedlinkUpdater(SLClient):
         self.lock = lock
         self.args = myargs
 
+   
+    def packet_handler(self, count, slpack):
+        """
+        for compatibility with obspy 0.10.3 renaming
+        """
+        self.packetHandler(count, slpack)
+
     def packetHandler(self, count, slpack):
         """
         Processes each packet received from the SeedLinkConnection.
@@ -278,12 +330,12 @@ class SeedlinkUpdater(SLClient):
             return False
 
         # get basic packet info
-        type = slpack.getType()
+        type = slpack.get_type()
 
         # process INFO packets here
-        if (type == SLPacket.TYPE_SLINF):
+        if type == SLPacket.TYPE_SLINF:
             return False
-        if (type == SLPacket.TYPE_SLINFT):
+        if type == SLPacket.TYPE_SLINFT:
             logging.info("Complete INFO:" + self.slconn.getInfoString())
             if self.infolevel is not None:
                 return True
@@ -291,7 +343,7 @@ class SeedlinkUpdater(SLClient):
                 return False
 
         # process packet data
-        trace = slpack.getTrace()
+        trace = slpack.get_trace()
         if trace is None:
             logging.info(
                 self.__class__.__name__ + ": blockette contains no trace")
@@ -324,7 +376,9 @@ class SeedlinkUpdater(SLClient):
 
 
 class EventUpdater():
-
+    """
+    Fetch list of seismic events
+    """
     def __init__(self, stream, events, myargs=None, lock=None):
         self.stream = stream
         self.events = events
@@ -347,11 +401,11 @@ class EventUpdater():
                 continue
             try:
                 events = self.get_events()
-            except URLError, e:
-                msg = "%s: %s\n" % (e.__class__.__name__, e)
+            except URLError, error:
+                msg = "%s: %s\n" % (error.__class__.__name__, error)
                 sys.stderr.write(msg)
-            except Exception, e:
-                msg = "%s: %s\n" % (e.__class__.__name__, e)
+            except Exception, error:
+                msg = "%s: %s\n" % (error.__class__.__name__, error)
                 sys.stderr.write(msg)
             else:
                 self.update_events(events)
@@ -364,9 +418,9 @@ class EventUpdater():
         with self.lock:
             start = min([tr.stats.starttime for tr in self.stream])
             end = max([tr.stats.endtime for tr in self.stream])
-        c = Client("NERIES")
-        events = c.get_events(starttime=start, endtime=end,
-                              minmagnitude=self.args.events)
+        neries_client = Client("NERIES")
+        events = neries_client.get_events(starttime=start, endtime=end,
+                                          minmagnitude=self.args.events)
         return events
 
     def update_events(self, events):
@@ -403,10 +457,9 @@ def _parse_time_with_suffix_to_seconds(timestring):
     try:
         return float(timestring)
     except:
-        pass
-    timestring, suffix = timestring[:-1], timestring[-1].lower()
-    mult = {'s': 1.0, 'm': 60.0, 'h': 3600.0, 'd': 3600.0 * 24}[suffix]
-    return float(timestring) * mult
+        timestring, suffix = timestring[:-1], timestring[-1].lower()
+        mult = {'s': 1.0, 'm': 60.0, 'h': 3600.0, 'd': 3600.0 * 24}[suffix]
+        return float(timestring) * mult
 
 
 def _parse_time_with_suffix_to_minutes(timestring):
@@ -431,14 +484,16 @@ def _parse_time_with_suffix_to_minutes(timestring):
         days.
     :rtype: float
     """
-    seconds = _parse_time_with_suffix_to_seconds(timestring)
+    try:
+        return float(timestring)
+    except:
+        seconds = _parse_time_with_suffix_to_seconds(timestring)
     return seconds / 60.0
 
 
 def main():
     parser = ArgumentParser(prog='seedlink_plotter',
                             description='Plot a realtime seismogram drum of a station')
-
     parser.add_argument(
         '-s', '--seedlink_streams', type=str, required=True,
         help='The seedlink stream selector string. It has the format '
@@ -451,7 +506,8 @@ def main():
 
     # Real-time parameters
     parser.add_argument('--seedlink_server', type=str,
-                        help='the seedlink server to connect to with port. ex: rtserver.ipgp.fr:18000 ', required=True)
+                        help='the seedlink server to connect to with port. "\
+                        "ex: rtserver.ipgp.fr:18000 ', required=True)
     parser.add_argument(
         '--x_scale', type=_parse_time_with_suffix_to_minutes,
         help='the number of minute to plot per line'
@@ -459,10 +515,10 @@ def main():
              '"m" for minutes, "h" for hours and "d" for days.',
         default=60)
     parser.add_argument('-b', '--backtrace_time',
-            help='the number of seconds to plot (3600=1h,86400=24h). The '
-                 'following suffixes can be used as well: "m" for minutes, '
-                 '"h" for hours and "d" for days.', required=True,
-                 type=_parse_time_with_suffix_to_seconds)
+                        help='the number of seconds to plot (3600=1h,86400=24h). The '
+                        'following suffixes can be used as well: "m" for minutes, '
+                        '"h" for hours and "d" for days.', required=True,
+                        type=_parse_time_with_suffix_to_seconds)
     parser.add_argument('--x_position', type=int,
                         help='the x position of the graph', required=False, default=0)
     parser.add_argument('--y_position', type=int,
@@ -491,12 +547,12 @@ def main():
     parser.add_argument(
         '--nb_rainbow_colors', help='the numbers of colors for rainbow mode', required=False, default=10)
     parser.add_argument(
-            '--update_time',
-            help='time in seconds between each graphic update.'
-            ' The following suffixes can be used as well: "s" for seconds, '
-            '"m" for minutes, "h" for hours and "d" for days.',
-            required=False, default=10,
-            type=_parse_time_with_suffix_to_seconds)
+        '--update_time',
+        help='time in seconds between each graphic update.'
+        ' The following suffixes can be used as well: "s" for seconds, '
+        '"m" for minutes, "h" for hours and "d" for days.',
+        required=False, default=10,
+        type=_parse_time_with_suffix_to_seconds)
     parser.add_argument('--events', required=False, default=None, type=float,
                         help='plot events using obspy.neries, specify minimum magnitude')
     parser.add_argument(
@@ -535,59 +591,56 @@ def main():
             sys.exit()
 
     now = UTCDateTime()
-
-    if any([x in args.seedlink_streams for x in ", ?*"]) or args.line_plot:
-        drum_plot = False
-    else:
-        drum_plot = True
-
-    if drum_plot:
-        if args.time_tick_nb is None:
-            args.time_tick_nb = 13
-        if args.tick_format is None:
-            args.tick_format = '%d/%m/%y %Hh'
-    else:
-        if args.time_tick_nb is None:
-            args.time_tick_nb = 5
-        if args.tick_format is None:
-            args.tick_format = '%H:%M:%S'
-
     stream = Stream()
     events = Catalog()
     lock = threading.Lock()
 
     # cl is the seedlink client
-    cl = SeedlinkUpdater(stream, myargs=args, lock=lock)
-    cl.slconn.setSLAddress(args.seedlink_server)
-    cl.multiselect = args.seedlink_streams
-    if drum_plot:
+    seedlink_client = SeedlinkUpdater(stream, myargs=args, lock=lock)
+    seedlink_client.slconn.setSLAddress(args.seedlink_server)
+    seedlink_client.multiselect = args.seedlink_streams
+
+    # tes if drum plot or line plot
+    if any([x in args.seedlink_streams for x in ", ?*"]) or args.line_plot:
+        drum_plot = False
+        if args.time_tick_nb is None:
+            args.time_tick_nb = 5
+        if args.tick_format is None:
+            args.tick_format = '%H:%M:%S'
         round_start = UTCDateTime(now.year, now.month, now.day, now.hour, 0, 0)
         round_start = round_start + 3600 - args.backtrace_time
-        cl.begin_time = (round_start).formatSeedLink()
+        seedlink_client.begin_time = (round_start).format_seedlink()
+
     else:
-        cl.begin_time = (now - args.backtrace_time).formatSeedLink()
-    cl.initialize()
-    ids = cl.getTraceIDs()
+        drum_plot = True
+        if args.time_tick_nb is None:
+            args.time_tick_nb = 13
+        if args.tick_format is None:
+            args.tick_format = '%d/%m/%y %Hh'
+    seedlink_client.begin_time = (now - args.backtrace_time).format_seedlink()
+
+    seedlink_client.initialize()
+    ids = seedlink_client.getTraceIDs()
     # start cl in a thread
-    thread = threading.Thread(target=cl.run)
+    thread = threading.Thread(target=seedlink_client.run)
     thread.setDaemon(True)
     thread.start()
 
     # start another thread for event updating if requested
     if args.events is not None:
-        eu = EventUpdater(stream=stream, events=events, myargs=args, lock=lock)
-        thread = threading.Thread(target=eu.run)
+        event_updater = EventUpdater(
+            stream=stream, events=events, myargs=args, lock=lock)
+        thread = threading.Thread(target=event_updater.run)
         thread.setDaemon(True)
         thread.start()
 
-    # Wait few seconds to get data
+    # Wait few seconds to get data for the first plot
     time.sleep(2)
 
     master = SeedlinkPlotter(stream=stream, events=events, myargs=args,
                              lock=lock, drum_plot=drum_plot,
                              trace_ids=ids)
     master.mainloop()
-
 
 if __name__ == '__main__':
     main()
