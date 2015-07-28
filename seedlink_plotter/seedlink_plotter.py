@@ -33,23 +33,23 @@ OBSPY_VERSION = map(int, OBSPY_VERSION.split(".")[:2])
 # reliably). see #7 and obspy/obspy#918.
 # imports depend of the obspy version
 if OBSPY_VERSION < [0, 10]:
-    warning_msg = ("ObsPy version < 0.10.0 has a memory leak in SeedLink Client. "
-                   "Please update your ObsPy installation to avoid being affected "
-                   "by the memory leak (see "
-                   "https://github.com/bonaime/seedlink_plotter/issues/7).")
+    warning_msg = (
+        "ObsPy version < 0.10.0 has a memory leak in SeedLink Client. "
+        "Please update your ObsPy installation to avoid being affected by "
+        "the memory leak (see "
+        "https://github.com/bonaime/seedlink_plotter/issues/7).")
     warnings.warn(warning_msg)
-elif OBSPY_VERSION == [0, 10]:
-    # Check if OBSPY_VERSION < 0.10.2
-    from obspy import __version__ as OBSPY_VERSION_small
-    if int(OBSPY_VERSION_small[5:6]) <= 2:
-        # 0.10.0 0.10.1 0.10.2
-        from obspy.seedlink.slpacket import SLPacket
-        from obspy.seedlink.slclient import SLClient
-        from obspy.fdsn import Client
-    else:
-        from obspy.clients.seedlink.slpacket import SLPacket
-        from obspy.clients.seedlink import SLClient
-        from obspy.clients.fdsn import Client
+# Check if OBSPY_VERSION < 0.11
+if OBSPY_VERSION < [0, 11]:
+    # 0.10.x
+    from obspy.seedlink.slpacket import SLPacket
+    from obspy.seedlink.slclient import SLClient
+    from obspy.fdsn import Client
+else:
+    # >= 0.11.0
+    from obspy.clients.seedlink.slpacket import SLPacket
+    from obspy.clients.seedlink import SLClient
+    from obspy.clients.fdsn import Client
 
 # Compatibility checks
 # UTCDateTime
