@@ -353,6 +353,8 @@ class SeedlinkUpdater(SLClient):
         with self.lock:
             self.stream += trace
             self.stream.merge(-1)
+            for tr in self.stream:
+                tr.stats.processing = []
         return False
 
     def getTraceIDs(self):
