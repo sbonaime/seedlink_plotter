@@ -495,7 +495,7 @@ def _parse_time_with_suffix_to_minutes(timestring):
 
 def main():
     parser = ArgumentParser(prog='seedlink_plotter',
-                            description='Plot a realtime seismogram drum of a station',
+                            description='Plot a realtime seismogram of a station',
                             formatter_class=ArgumentDefaultsHelpFormatter)
     parser.add_argument(
         '-s', '--seedlink_streams', type=str, required=True,
