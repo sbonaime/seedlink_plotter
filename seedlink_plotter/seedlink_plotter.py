@@ -15,7 +15,7 @@ from obspy import Stream, Trace
 from obspy import __version__ as OBSPY_VERSION
 from obspy.core import UTCDateTime
 from obspy.core.event import Catalog
-from argparse import ArgumentParser
+from argparse import ArgumentParser,ArgumentDefaultsHelpFormatter
 from math import sin
 import threading
 import time
@@ -495,7 +495,8 @@ def _parse_time_with_suffix_to_minutes(timestring):
 
 def main():
     parser = ArgumentParser(prog='seedlink_plotter',
-                            description='Plot a realtime seismogram drum of a station')
+                            description='Plot a realtime seismogram drum of a station',
+                            formatter_class=ArgumentDefaultsHelpFormatter)
     parser.add_argument(
         '-s', '--seedlink_streams', type=str, required=True,
         help='The seedlink stream selector string. It has the format '
