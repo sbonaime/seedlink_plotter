@@ -265,7 +265,7 @@ class SeedlinkPlotter(Tkinter.Tk):
                     plt.setp(ylabels, visible=False)
                     ax.set_axis_bgcolor("#ff6666")
         if OBSPY_VERSION >= [0, 10]:
-            fig.axes[0].set_xlim(right=date2num(self.stop_time))
+            fig.axes[0].set_xlim(right=date2num(self.stop_time.datetime))
         if len(fig.axes) > 5:
             bbox["alpha"] = 0.6
         fig.text(0.99, 0.97, self.stop_time.strftime("%Y-%m-%d %H:%M:%S UTC"),
