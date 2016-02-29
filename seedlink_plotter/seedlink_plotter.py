@@ -363,10 +363,18 @@ class SeedlinkUpdater(SLClient):
         fetch data for.
         """
         ids = []
-        for stream in self.slconn.getStreams():
+        if OBSPY_VERSION < [1, 0]:
+            streams = self.slconn.getStreams()
+        else:
+            streams = self.slconn.get_streams()
+        for stream in streams:
             net = stream.net
             sta = stream.station
-            for selector in stream.getSelectors():
+            if OBSPY_VERSION < [1, 0]:
+                selectors = stream.getSelectors()
+            else:
+                selectors = stream.get_selectors()
+            for selector in selectors:
                 if len(selector) == 3:
                     loc = ""
                 else:
@@ -600,7 +608,10 @@ def main():
 
     # cl is the seedlink client
     seedlink_client = SeedlinkUpdater(stream, myargs=args, lock=lock)
-    seedlink_client.slconn.setSLAddress(args.seedlink_server)
+    if OBSPY_VERSION < [1, 0]:
+        seedlink_client.slconn.setSLAddress(args.seedlink_server)
+    else:
+        seedlink_client.slconn.set_sl_address(args.seedlink_server)
     seedlink_client.multiselect = args.seedlink_streams
 
     # tes if drum plot or line plot
