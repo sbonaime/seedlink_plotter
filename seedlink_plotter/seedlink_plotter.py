@@ -20,6 +20,7 @@ from math import sin
 import threading
 import time
 import warnings
+import os
 import sys
 from urllib2 import URLError
 import logging
@@ -91,6 +92,11 @@ class SeedlinkPlotter(Tkinter.Tk):
     def __init__(self, stream=None, events=None, myargs=None, lock=None,
                  drum_plot=True, trace_ids=None, *args, **kwargs):
         Tkinter.Tk.__init__(self, *args, **kwargs)
+        favicon = Tkinter.PhotoImage(
+            file=os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                              "favicon.gif"))
+        self.tk.call('wm', 'iconphoto', self._w, favicon)
+        self.wm_title("seedlink-plotter {}".format(myargs.seedlink_server))
         self.focus_set()
         self._bind_keys()
         args = myargs

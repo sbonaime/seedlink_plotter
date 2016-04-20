@@ -17,6 +17,7 @@ setup(
     install_requires=INSTALL_REQUIRES,
     keywords=["Seedlink", "ObsPy", "Seismology", "Plotting", "Realtime"],
     packages=["seedlink_plotter"],
+    package_data={'seedlink_plotter': ['favicon.gif']},
     entry_points={
         'console_scripts':
             ['seedlink-plotter = seedlink_plotter.seedlink_plotter:main'],
