@@ -434,8 +434,8 @@ class EventUpdater():
         with self.lock:
             start = min([tr.stats.starttime for tr in self.stream])
             end = max([tr.stats.endtime for tr in self.stream])
-        neries_client = Client("NERIES")
-        events = neries_client.get_events(starttime=start, endtime=end,
+        neries_emsc = Client("EMSC")
+        events = neries_emsc.get_events(starttime=start, endtime=end,
                                           minmagnitude=self.args.events)
         return events
 
