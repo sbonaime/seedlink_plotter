@@ -16,9 +16,9 @@ On some linux box, the time zone must be set to UTC and not GMT
 
 ### Usage examples
 
-Drum plots (with longer time range):
+Drum plots (with longer time range) and with events greater than 5.5:
 
-    seedlink-plotter -s "G_FDF:00BHZ" --x_position 200 --y_position 50 --x_size 800 --y_size 600 -b 24h --scale 20000 --seedlink_server "rtserver.ipgp.fr:18000" --x_scale 60m
+    seedlink-plotter -s "G_FDF:00BHZ" --x_position 200 --y_position 50 --x_size 800 --y_size 600 -b 24h --scale 20000 --seedlink_server "rtserver.ipgp.fr:18000" --x_scale 60m --events 5.5
 
 ![Singlechannel](/img/Singlechannel.png)
 
