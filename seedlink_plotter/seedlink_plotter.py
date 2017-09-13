@@ -4,7 +4,7 @@ import matplotlib
 matplotlib.use("TkAgg")
 matplotlib.rc('figure.subplot', hspace=0)
 matplotlib.rc('font', family="monospace")
-import Tkinter
+import tkinter
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
 from matplotlib.ticker import MaxNLocator
@@ -22,12 +22,12 @@ import time
 import warnings
 import os
 import sys
-from urllib2 import URLError
+from urllib.error import URLError
 import logging
 import numpy as np
 
 
-OBSPY_VERSION = map(int, OBSPY_VERSION.split(".")[:2])
+OBSPY_VERSION = list(map(int, OBSPY_VERSION.split(".")[:2]))
 # check obspy version and warn if it's below 0.10.0, which means that a memory
 # leak is present in the used seedlink client (unless working on some master
 # branch version after obspy/obspy@5ce975c3710ca, which is impossible to check
@@ -83,7 +83,7 @@ except AttributeError:
     setattr(SLPacket, 'get_trace', get_trace)
 
 
-class SeedlinkPlotter(Tkinter.Tk):
+class SeedlinkPlotter(tkinter.Tk):
 
     """
     This module plots realtime seismic data from a Seedlink server
@@ -91,8 +91,8 @@ class SeedlinkPlotter(Tkinter.Tk):
 
     def __init__(self, stream=None, events=None, myargs=None, lock=None,
                  drum_plot=True, trace_ids=None, *args, **kwargs):
-        Tkinter.Tk.__init__(self, *args, **kwargs)
-        favicon = Tkinter.PhotoImage(
+        tkinter.Tk.__init__(self, *args, **kwargs)
+        favicon = tkinter.PhotoImage(
             file=os.path.join(os.path.dirname(os.path.abspath(__file__)),
                               "favicon.gif"))
         self.tk.call('wm', 'iconphoto', self._w, favicon)
@@ -117,7 +117,7 @@ class SeedlinkPlotter(Tkinter.Tk):
         canvas = FigureCanvasTkAgg(self.figure, master=self)
 
         canvas.show()
-        canvas.get_tk_widget().pack(fill=Tkinter.BOTH, expand=1)
+        canvas.get_tk_widget().pack(fill=tkinter.BOTH, expand=1)
 
         self.backtrace = args.backtrace_time
         self.canvas = canvas
@@ -291,7 +291,7 @@ class SeedlinkPlotter(Tkinter.Tk):
         """
         color_list = []
         frequency = 0.3
-        for compteur_lignes in xrange(max_color):
+        for compteur_lignes in range(max_color):
 
             red = sin(frequency * compteur_lignes * 2 + 0) * 127 + 128
             green = sin(frequency * compteur_lignes * 2 + 2) * 127 + 128
@@ -417,10 +417,10 @@ class EventUpdater():
                 continue
             try:
                 events = self.get_events()
-            except URLError, error:
+            except URLError as error:
                 msg = "%s: %s\n" % (error.__class__.__name__, error)
                 sys.stderr.write(msg)
-            except Exception, error:
+            except Exception as error:
                 msg = "%s: %s\n" % (error.__class__.__name__, error)
                 sys.stderr.write(msg)
             else:
@@ -603,8 +603,8 @@ def main():
                     "Manager. You can exit with <Ctrl>-C (as long as you do "
                     "not switch to another window with e.g. <Alt>-<Tab>)."
                     "\n\nType 'y' to continue.. ")
-        if raw_input(warning_) != "y":
-            print "Aborting."
+        if input(warning_) != "y":
+            print("Aborting.")
             sys.exit()
 
     now = UTCDateTime()
