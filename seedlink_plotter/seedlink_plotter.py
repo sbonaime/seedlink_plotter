@@ -1,10 +1,17 @@
 #!/usr/bin/env python
+from __future__ import print_function
+
 import matplotlib
 # Set the backend for matplotlib.
 matplotlib.use("TkAgg")
 matplotlib.rc('figure.subplot', hspace=0)
 matplotlib.rc('font', family="monospace")
-import Tkinter
+try:
+    # Py3
+    import tkinter
+except ImportError:
+    # Py2
+    import Tkinter as tkinter
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
 from matplotlib.ticker import MaxNLocator
@@ -15,6 +22,7 @@ from obspy import Stream, Trace
 from obspy import __version__ as OBSPY_VERSION
 from obspy.core import UTCDateTime
 from obspy.core.event import Catalog
+from obspy.core.util import MATPLOTLIB_VERSION
 from argparse import ArgumentParser,ArgumentDefaultsHelpFormatter
 from math import sin
 import threading
@@ -22,12 +30,26 @@ import time
 import warnings
 import os
 import sys
-from urllib2 import URLError
+try:
+    # Py3
+    from urllib.request import URLError
+except ImportError:
+    # Py2
+    from urllib2 import URLError
 import logging
 import numpy as np
 
 
-OBSPY_VERSION = map(int, OBSPY_VERSION.split(".")[:2])
+# ugly but simple Python 2/3 compat
+if sys.version_info.major < 3:
+    range_func = xrange
+    input_func = raw_input
+else:
+    range_func = range
+    input_func = input
+
+
+OBSPY_VERSION = [int(x) for x in OBSPY_VERSION.split(".")[:2]]
 # check obspy version and warn if it's below 0.10.0, which means that a memory
 # leak is present in the used seedlink client (unless working on some master
 # branch version after obspy/obspy@5ce975c3710ca, which is impossible to check
@@ -83,7 +105,7 @@ except AttributeError:
     setattr(SLPacket, 'get_trace', get_trace)
 
 
-class SeedlinkPlotter(Tkinter.Tk):
+class SeedlinkPlotter(tkinter.Tk):
 
     """
     This module plots realtime seismic data from a Seedlink server
@@ -91,8 +113,8 @@ class SeedlinkPlotter(Tkinter.Tk):
 
     def __init__(self, stream=None, events=None, myargs=None, lock=None,
                  drum_plot=True, trace_ids=None, *args, **kwargs):
-        Tkinter.Tk.__init__(self, *args, **kwargs)
-        favicon = Tkinter.PhotoImage(
+        tkinter.Tk.__init__(self, *args, **kwargs)
+        favicon = tkinter.PhotoImage(
             file=os.path.join(os.path.dirname(os.path.abspath(__file__)),
                               "favicon.gif"))
         self.tk.call('wm', 'iconphoto', self._w, favicon)
@@ -116,8 +138,11 @@ class SeedlinkPlotter(Tkinter.Tk):
         self.figure = Figure()
         canvas = FigureCanvasTkAgg(self.figure, master=self)
 
-        canvas.show()
-        canvas.get_tk_widget().pack(fill=Tkinter.BOTH, expand=1)
+        if MATPLOTLIB_VERSION[:2] >= [2, 2]:
+            canvas.draw()
+        else:
+            canvas.show()
+        canvas.get_tk_widget().pack(fill=tkinter.BOTH, expand=1)
 
         self.backtrace = args.backtrace_time
         self.canvas = canvas
@@ -236,7 +261,10 @@ class SeedlinkPlotter(Tkinter.Tk):
         path_effects = [withStroke(linewidth=4, foreground="w")]
         pad = 10
         for ax in fig.axes[::2]:
-            ax.set_axis_bgcolor("0.8")
+            if MATPLOTLIB_VERSION[0] >= 2:
+                ax.set_facecolor("0.8")
+            else:
+                ax.set_axis_bgcolor("0.8")
         for id_, ax in zip(self.ids, fig.axes):
             ax.set_title("")
             if OBSPY_VERSION < [0, 10]:
@@ -291,7 +319,7 @@ class SeedlinkPlotter(Tkinter.Tk):
         """
         color_list = []
         frequency = 0.3
-        for compteur_lignes in xrange(max_color):
+        for compteur_lignes in range_func(max_color):
 
             red = sin(frequency * compteur_lignes * 2 + 0) * 127 + 128
             green = sin(frequency * compteur_lignes * 2 + 2) * 127 + 128
@@ -417,10 +445,10 @@ class EventUpdater():
                 continue
             try:
                 events = self.get_events()
-            except URLError, error:
+            except URLError as error:
                 msg = "%s: %s\n" % (error.__class__.__name__, error)
                 sys.stderr.write(msg)
-            except Exception, error:
+            except Exception as error:
                 msg = "%s: %s\n" % (error.__class__.__name__, error)
                 sys.stderr.write(msg)
             else:
@@ -603,8 +631,8 @@ def main():
                     "Manager. You can exit with <Ctrl>-C (as long as you do "
                     "not switch to another window with e.g. <Alt>-<Tab>)."
                     "\n\nType 'y' to continue.. ")
-        if raw_input(warning_) != "y":
-            print "Aborting."
+        if input_func(warning_) != "y":
+            print("Aborting.")
             sys.exit()
 
     now = UTCDateTime()
