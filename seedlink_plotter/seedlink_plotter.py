@@ -129,7 +129,10 @@ class SeedlinkPlotter(tkinter.Tk):
         self.figure = Figure()
         canvas = FigureCanvasTkAgg(self.figure, master=self)
 
-        canvas.show()
+        if MATPLOTLIB_VERSION[:2] >= [2, 2]:
+            canvas.draw()
+        else:
+            canvas.show()
         canvas.get_tk_widget().pack(fill=tkinter.BOTH, expand=1)
 
         self.backtrace = args.backtrace_time
