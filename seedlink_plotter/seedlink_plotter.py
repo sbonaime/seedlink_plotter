@@ -22,6 +22,7 @@ from obspy import Stream, Trace
 from obspy import __version__ as OBSPY_VERSION
 from obspy.core import UTCDateTime
 from obspy.core.event import Catalog
+from obspy.core.util import MATPLOTLIB_VERSION
 from argparse import ArgumentParser,ArgumentDefaultsHelpFormatter
 from math import sin
 import threading
@@ -248,7 +249,10 @@ class SeedlinkPlotter(tkinter.Tk):
         path_effects = [withStroke(linewidth=4, foreground="w")]
         pad = 10
         for ax in fig.axes[::2]:
-            ax.set_axis_bgcolor("0.8")
+            if MATPLOTLIB_VERSION[0] >= 2:
+                ax.set_facecolor("0.8")
+            else:
+                ax.set_axis_bgcolor("0.8")
         for id_, ax in zip(self.ids, fig.axes):
             ax.set_title("")
             if OBSPY_VERSION < [0, 10]:
