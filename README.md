@@ -44,7 +44,7 @@ Keyboard controls only work without option `--without-decoration`!
  - `<Escape>` or `q`: close window
 
 ### Dependencies
- - Python 2.7
+ - Python 2.7 or 3.6
  - ObsPy 0.9.0
  - matplolib (>= 1.3.0)
  - scipy
