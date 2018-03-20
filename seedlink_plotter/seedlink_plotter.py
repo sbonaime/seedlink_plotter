@@ -40,6 +40,15 @@ import logging
 import numpy as np
 
 
+# ugly but simple Python 2/3 compat
+if sys.version_info.major < 3:
+    range_func = xrange
+    input_func = raw_input
+else:
+    range_func = range
+    input_func = input
+
+
 OBSPY_VERSION = [int(x) for x in OBSPY_VERSION.split(".")[:2]]
 # check obspy version and warn if it's below 0.10.0, which means that a memory
 # leak is present in the used seedlink client (unless working on some master
@@ -310,7 +319,7 @@ class SeedlinkPlotter(tkinter.Tk):
         """
         color_list = []
         frequency = 0.3
-        for compteur_lignes in xrange(max_color):
+        for compteur_lignes in range_func(max_color):
 
             red = sin(frequency * compteur_lignes * 2 + 0) * 127 + 128
             green = sin(frequency * compteur_lignes * 2 + 2) * 127 + 128
@@ -622,7 +631,7 @@ def main():
                     "Manager. You can exit with <Ctrl>-C (as long as you do "
                     "not switch to another window with e.g. <Alt>-<Tab>)."
                     "\n\nType 'y' to continue.. ")
-        if raw_input(warning_) != "y":
+        if input_func(warning_) != "y":
             print("Aborting.")
             sys.exit()
 
