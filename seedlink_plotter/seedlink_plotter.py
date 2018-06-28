@@ -297,7 +297,10 @@ class SeedlinkPlotter(tkinter.Tk):
                 # at left edge of time axis)
                 if len(ydata) in [4, 2] and not ydata.any():
                     plt.setp(ylabels, visible=False)
-                    ax.set_axis_bgcolor("#ff6666")
+                    if MATPLOTLIB_VERSION[0] >= 2:
+                        ax.set_facecolor("#ff6666")
+                    else:
+                        ax.set_axis_bgcolor("#ff6666")
         if OBSPY_VERSION >= [0, 10]:
             fig.axes[0].set_xlim(right=date2num(self.stop_time.datetime))
             fig.axes[0].set_xlim(left=date2num(self.start_time.datetime))
