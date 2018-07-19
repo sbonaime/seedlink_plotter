@@ -271,6 +271,15 @@ class SeedlinkPlotter(tkinter.Tk):
                 ax.text(0.1, 0.9, id_, va="top", ha="left",
                         transform=ax.transAxes, bbox=bbox,
                         size=self.args.title_size)
+            else:
+                try:
+                    text = ax.texts[0]
+                # we should always have a single text, which is the stream
+                # label of the axis, but catch index errors just in case
+                except IndexError:
+                    pass
+                else:
+                    text.set_fontsize(self.args.title_size)
             xlabels = ax.get_xticklabels()
             ylabels = ax.get_yticklabels()
             plt.setp(ylabels, ha="left", path_effects=path_effects)
