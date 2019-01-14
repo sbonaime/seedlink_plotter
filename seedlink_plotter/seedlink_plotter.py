@@ -241,6 +241,17 @@ class SeedlinkPlotter(tkinter.Tk):
             title += ' - autoscale -'
         title += " without filtering"
         self.figure.clear()
+        
+        for tr in stream:
+            tr.stats.processing = []
+        
+            
+        # adjust scale
+        if self.args.relative_scale:
+            scale = max(stream.std())*self.args.scale
+        else:
+            scale = self.args.scale
+
         stream.plot(
             fig=self.figure, type='dayplot', interval=self.args.x_scale,
             number_of_ticks=self.args.time_tick_nb, tick_format=self.args.tick_format,
@@ -248,7 +259,7 @@ class SeedlinkPlotter(tkinter.Tk):
             x_labels_size=8, y_labels_size=8,
             title=title, title_size=14,
             linewidth=0.5, right_vertical_labels=False,
-            vertical_scaling_range=self.args.scale,
+            vertical_scaling_range=scale,
             subplots_adjust_left=0.04, subplots_adjust_right=0.99,
             subplots_adjust_top=0.95, subplots_adjust_bottom=0.05,
             one_tick_per_line=True,
