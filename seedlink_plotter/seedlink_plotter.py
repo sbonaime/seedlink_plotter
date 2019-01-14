@@ -552,7 +552,7 @@ class EventUpdater():
             	print(str(temp_catalog.count()) + " events found" )
 
         # corrects the time to be the arrival time and not the local event time
-        if events.count > 0:
+        if events.count() > 0:
             try:
                 events = self.event_time_to_arrival_time(events, station_latidude, station_longitude)
             except:
