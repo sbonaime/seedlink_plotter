@@ -105,6 +105,11 @@ except AttributeError:
     setattr(SLPacket, 'get_trace', get_trace)
 
 
+# to keep track if the server is still sending data
+global last_trace
+last_trace = UTCDateTime()
+
+
 class SeedlinkPlotter(tkinter.Tk):
 
     """
@@ -518,6 +523,22 @@ def _parse_time_with_suffix_to_seconds(timestring):
         return float(timestring) * mult
 
 
+class Connection():
+    def __init__(self, master, myargs=None): 
+        self.args = myargs
+        self.master = master
+        
+    #checks all 30 seconds if the last trace is older than 2 minutes. If its older the programm restarts.
+    def check(self):
+        while True:
+            time.sleep(30)
+            global last_trace
+            if UTCDateTime() - last_trace > 60*2: # never smaller than 10 sec. Otherwise it restarts sponatiously
+                python = sys.executable
+                print(python)
+                os.execl(python, python, * sys.argv)
+
+
 def _parse_time_with_suffix_to_minutes(timestring):
     """
     Parse a string to minutes as float.
@@ -677,29 +698,39 @@ def main():
             args.time_tick_nb = 13
         if args.tick_format is None:
             args.tick_format = '%d/%m/%y %Hh'
+    
+    
     seedlink_client.begin_time = (now - args.backtrace_time).format_seedlink()
 
     seedlink_client.initialize()
     ids = seedlink_client.getTraceIDs()
+    args.ids = ids
     # start cl in a thread
     thread = threading.Thread(target=seedlink_client.run)
     thread.setDaemon(True)
     thread.start()
-
+    
     # start another thread for event updating if requested
-    if args.events is not None:
+    if args.events_criteria != []:
         event_updater = EventUpdater(
             stream=stream, events=events, myargs=args, lock=lock)
         thread = threading.Thread(target=event_updater.run)
         thread.setDaemon(True)
         thread.start()
-
+        
     # Wait few seconds to get data for the first plot
     time.sleep(2)
 
     master = SeedlinkPlotter(stream=stream, events=events, myargs=args,
                              lock=lock, drum_plot=drum_plot,
                              trace_ids=ids)
+
+    # thread to check if connection is still available
+    connection = Connection(master, myargs=args)
+    thread = threading.Thread(target=connection.check)
+    thread.setDaemon(True)
+    thread.start()
+
     master.mainloop()
 
 if __name__ == '__main__':
