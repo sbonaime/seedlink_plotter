@@ -374,6 +374,7 @@ class SeedlinkUpdater(SLClient):
         self.stream = stream
         self.lock = lock
         self.args = myargs
+        self.response = {}
 
    
     def packet_handler(self, count, slpack):
@@ -413,6 +414,46 @@ class SeedlinkUpdater(SLClient):
 
         # process packet data
         trace = slpack.get_trace()
+        global last_trace
+        last_trace = UTCDateTime()
+
+        """
+        Routine to remove the instrument response
+        """
+        if self.args.remove_response == True: #check if the repsonse needs to be removed
+            station_network, station_station =  trace.stats.network, trace.stats.station
+            station_location, station_channel = trace.stats.location, trace.stats.channel
+            name = get_station_name(trace) # returns a seedlink like name for reference in a dictionary later
+            if name not in self.response: #first check if the response function is already available
+                found = False
+                for client in ["iris-federator","eida-routing"]: #parse throught the available clients
+                    try:
+                        Client = RoutingClient(client)
+                        inventory = Client.get_stations(network = station_network,
+			                                station = station_station,
+                                            channel = station_channel,
+			                                location = station_location,
+			                                level="response")
+                        
+                        self.response[name] = inventory # dictionary with {"Trace_Name": Response_Obejct }
+                        found = True
+                        print(str(name) + " succsessfull")
+                        break # if found break loop and continue
+                    except:
+                        pass
+                if not found:
+                    print("No response function found for " +str(name))
+            else:
+                found = True
+            
+            if found and name in self.response: #only try to remove the response if its available
+                try:
+                    pre_filt = (0.005, 0.006, 30.0, 35.0)
+                    trace.remove_response(inventory = self.response[name][0], output = "VEL", 
+                                      zero_mean = True, pre_filt=pre_filt)
+                except:
+                    print("Removing Response not possible for " + str(trace.stats.name))
+
         if trace is None:
             logging.info(
                 self.__class__.__name__ + ": blockette contains no trace")
