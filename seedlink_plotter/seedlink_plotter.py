@@ -270,10 +270,11 @@ class SeedlinkPlotter(tkinter.Tk):
         fig = self.figure
         # avoid the differing trace.processing attributes prohibiting to plot
         # single traces of one id together.
-        for tr in stream:
+        for i, tr in enumerate(stream):
             tr.stats.processing = []
-            if len(tr.data) < 5:  # otherwise emty streams make problems with equal scale
-                tr.data = np.array([0.000000000000000000001]) 
+            # otherwise emty streams make problems with equal scale
+            if len(tr.data) < 5 and len(stream.traces) > 0:
+                stream.pop(i)
 
         stream.plot(fig=fig, method="fast", draw=False, equal_scale=self.args.equal_scale,
                     size=(self.args.x_size, self.args.y_size), title="",
@@ -510,7 +511,7 @@ class EventUpdater():
                                                      channel=splitted_ids[0][3],
                                                      location=splitted_ids[0][2])
                 
-                station_latidude = station_inventory[0][0].latitude 
+                station_latitude = station_inventory[0][0].latitude
                 station_longitude = station_inventory[0][0].longitude 
                 break
             except:
@@ -524,11 +525,11 @@ class EventUpdater():
                 try:
                     client = Client(client)
                     
-                    # get all events within a rdius (in deg) around the station with a minimum magnitude
+                    # get all events within a radius (in deg) around the station with a minimum magnitude
                     t = client.get_events(starttime=start, endtime=end,
                                        minmagnitude=criteria[0],
                                        maxmagnitude=criteria[1],
-                                       latitude=station_latidude,
+                                       latitude=station_latitude,
                                        longitude=station_longitude,
                                        minradius=criteria[2],
                                        maxradius=criteria[3])
@@ -546,7 +547,7 @@ class EventUpdater():
         # corrects the time to be the arrival time and not the local event time
         if events.count() > 0:
             try:
-                events = self.event_time_to_arrival_time(events, station_latidude, station_longitude)
+                events = self.event_time_to_arrival_time(events, station_latitude, station_longitude)
             except:
                 print("Correcting all events not possible")
         return events
@@ -643,19 +644,6 @@ def _parse_time_with_suffix_to_minutes(timestring):
     return seconds / 60.0
 
 
-def get_station_name(trace):
-    """
-    Returns the trace name used to look for information in a dictonary. 
-    """
-    station_network = trace.stats.network
-    station_station = trace.stats.station
-    station_channel = trace.stats.channel
-    station_location = trace.stats.location
-    name = str(station_network) + "_" + str(station_station) + ":" + str(station_location) + str(station_channel)
-    
-    return name
-
-
 def main():
     
     p = configargparse.ArgParser(default_config_files=['/*.txt'], prog='seedlink_plotter',
@@ -729,8 +717,8 @@ def main():
         help=('the graph window will have no decorations. that means the '
               'window is not controlled by the window manager and can only '
               'be closed by killing the respective process.'))
-    p.add_argument('--line_plot', help='regular real time plot for single station'
-                   , action='store_true')
+    p.add_argument('--line_plot', help='regular real time plot for single station',
+                   action='store_true')
     p.add_argument('--rainbow', help='', action='store_true')
     p.add_argument('--nb_rainbow_colors', help='the numbers of colors for rainbow mode')
     p.add_argument('-f', '--fullscreen', default=False,
