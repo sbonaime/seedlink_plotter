@@ -18,12 +18,22 @@ from matplotlib.ticker import MaxNLocator
 from matplotlib.patheffects import withStroke
 from matplotlib.dates import date2num
 import matplotlib.pyplot as plt
+
+import obspy
+from obspy.taup import TauPyModel
 from obspy import Stream, Trace
 from obspy import __version__ as OBSPY_VERSION
 from obspy.core import UTCDateTime
 from obspy.core.event import Catalog
 from obspy.core.util import MATPLOTLIB_VERSION
-from argparse import ArgumentParser,ArgumentDefaultsHelpFormatter
+from obspy.clients.fdsn import RoutingClient
+# to parse through all stations
+from obspy.clients.fdsn.header import URL_MAPPINGS
+
+# get settings
+import configargparse
+from argparse import ArgumentDefaultsHelpFormatter
+
 from math import sin
 import threading
 import time
@@ -89,7 +99,7 @@ except AttributeError:
 try:
     SLPacket.get_type
 except AttributeError:
-  # create the new get_type fonction using the old getType method
+    # create the new get_type fonction using the old getType method
     def get_type(self):
         return self.getType()
     # add the function in the class
@@ -98,7 +108,7 @@ except AttributeError:
 try:
     SLPacket.get_trace
 except AttributeError:
-  # create the new get_trace fonction using the old getTrace method
+    # create the new get_trace fonction using the old getTrace method
     def get_trace(self):
         return self.getTrace()
     # add the function in the class
@@ -123,7 +133,7 @@ class SeedlinkPlotter(tkinter.Tk):
         self._bind_keys()
         args = myargs
         self.lock = lock
-        ### size and position
+        # size and position
         self.geometry(str(args.x_size) + 'x' + str(args.y_size) + '+' + str(
             args.x_position) + '+' + str(args.y_position))
         w, h, pad = self.winfo_screenwidth(), self.winfo_screenheight(), 3
@@ -222,6 +232,16 @@ class SeedlinkPlotter(tkinter.Tk):
             title += ' - autoscale -'
         title += " without filtering"
         self.figure.clear()
+
+        for tr in stream:
+            tr.stats.processing = []
+        
+        # adjust scale
+        if self.args.relative_scale:
+            scale = max(stream.std()) * self.args.scale
+        else:
+            scale = self.args.scale
+
         stream.plot(
             fig=self.figure, type='dayplot', interval=self.args.x_scale,
             number_of_ticks=self.args.time_tick_nb, tick_format=self.args.tick_format,
@@ -229,7 +249,7 @@ class SeedlinkPlotter(tkinter.Tk):
             x_labels_size=8, y_labels_size=8,
             title=title, title_size=14,
             linewidth=0.5, right_vertical_labels=False,
-            vertical_scaling_range=self.args.scale,
+            vertical_scaling_range=scale,
             subplots_adjust_left=0.04, subplots_adjust_right=0.99,
             subplots_adjust_top=0.95, subplots_adjust_bottom=0.05,
             one_tick_per_line=True,
@@ -250,9 +270,13 @@ class SeedlinkPlotter(tkinter.Tk):
         fig = self.figure
         # avoid the differing trace.processing attributes prohibiting to plot
         # single traces of one id together.
-        for tr in stream:
+        for i, tr in enumerate(stream):
             tr.stats.processing = []
-        stream.plot(fig=fig, method="fast", draw=False, equal_scale=False,
+            # otherwise emty streams make problems with equal scale
+            if len(tr.data) < 5 and len(stream.traces) > 0:
+                stream.pop(i)
+
+        stream.plot(fig=fig, method="fast", draw=False, equal_scale=self.args.equal_scale,
                     size=(self.args.x_size, self.args.y_size), title="",
                     color='Blue', tick_format=self.args.tick_format,
                     number_of_ticks=self.args.time_tick_nb)
@@ -352,7 +376,6 @@ class SeedlinkUpdater(SLClient):
         self.lock = lock
         self.args = myargs
 
-   
     def packet_handler(self, count, slpack):
         """
         for compatibility with obspy 0.10.3 renaming
@@ -440,6 +463,26 @@ class EventUpdater():
         self.events = events
         self.args = myargs
         self.lock = lock
+
+        self.model = TauPyModel(model="iasp91")
+        # get the coordinates of the station
+        splitted_ids = [x.split(".") for x in self.args.ids]
+        # initialize the event clients
+        self.event_clients = []
+        for client in self.args.events_clients:
+            self.event_clients.append(Client(client))
+        # use seedlink id to get network, station, location and channel
+        try:
+            client = Client(self.args.station_clients[0])
+            station_inventory = client.get_stations(network=splitted_ids[0][0],
+                                                    station=splitted_ids[0][1],
+                                                    channel=splitted_ids[0][3],
+                                                    location=splitted_ids[0][2])
+            self.station_latitude = station_inventory[0][0].latitude
+            self.station_longitude = station_inventory[0][0].longitude
+        except Exception as error:
+            print(error)
+
         warn_msg = "The resource identifier already exists and points to " + \
                    "another object. It will now point to the object " + \
                    "referred to by the new resource identifier."
@@ -474,9 +517,43 @@ class EventUpdater():
         with self.lock:
             start = min([tr.stats.starttime for tr in self.stream])
             end = max([tr.stats.endtime for tr in self.stream])
-        neries_emsc = Client("EMSC")
-        events = neries_emsc.get_events(starttime=start, endtime=end,
-                                          minmagnitude=self.args.events)
+        
+        events = Catalog()
+
+        # search for events fulfilling each criteria
+        for i, criteria in enumerate(self.args.events_criterias):
+            if len(self.args.events_criterias) != len(self.args.events_clients):
+                i = 0
+            print("Search for events with criteria " + str(criteria) + " with client: "
+                  + str(self.args.events_clients[i]))
+            temp_catalog = Catalog()
+            try:
+                # get all events within a radius (in deg) around the station with a minimum magnitude
+                t = self.event_clients[i].get_events(starttime=start, endtime=end,
+                                                     minmagnitude=criteria[0],
+                                                     maxmagnitude=criteria[1],
+                                                     latitude=self.station_latitude,
+                                                     longitude=self.station_longitude,
+                                                     minradius=criteria[2],
+                                                     maxradius=criteria[3])
+                if t.count() > temp_catalog.count():
+                    temp_catalog = t
+            except Exception as error:
+                print(error)
+                
+            events.extend(temp_catalog)
+            if temp_catalog.count() == 0:
+                print("No events found for the current settings " + str(criteria) + "\n")
+            else:
+                print(str(temp_catalog.count()) + " events found \n")
+
+        # corrects the time to be the arrival time and not the local event time
+        if events.count() > 0:
+            try:
+                events = self.event_time_to_arrival_time(events, self.station_latitude, self.station_longitude)
+            except Exception as error:
+                print("Correcting all events not possible because of: \n")
+                print(error)
         return events
 
     def update_events(self, events):
@@ -486,7 +563,27 @@ class EventUpdater():
         with self.lock:
             self.events.clear()
             self.events.extend(events)
-
+            
+    def event_time_to_arrival_time(self, events, lat, long):
+        """ 
+        Uses TauPy to calculate the time it takes to see the first arrival at the station.
+        """
+        for event in range(len(events)):
+            try:
+                distance = obspy.taup.taup_geo.calc_dist(source_latitude_in_deg=events[event].origins[0].latitude,
+                                                         source_longitude_in_deg=events[event].origins[0].longitude,
+                                                         receiver_latitude_in_deg=lat,
+                                                         receiver_longitude_in_deg=long,
+                                                         radius_of_planet_in_km=6371,
+                                                         flattening_of_planet=0)
+                arrivals = self.model.get_travel_times(source_depth_in_km=events[event].origins[0].depth / 1000,
+                                                       distance_in_degree=distance)
+                events[event].origins[0].time = events[event].origins[0].time + arrivals[0].time
+            except Exception as error:
+                print("Correcting event " + str(event) + "not possible " + "beacuse of: \n")
+                print(error)
+        return events
+            
 
 def _parse_time_with_suffix_to_seconds(timestring):
     """
@@ -548,88 +645,128 @@ def _parse_time_with_suffix_to_minutes(timestring):
 
 
 def main():
-    parser = ArgumentParser(prog='seedlink_plotter',
-                            description='Plot a realtime seismogram of a station',
-                            formatter_class=ArgumentDefaultsHelpFormatter)
-    parser.add_argument(
-        '-s', '--seedlink_streams', type=str, required=True,
-        help='The seedlink stream selector string. It has the format '
-             '"stream1[:selectors1],stream2[:selectors2],...", with "stream" '
-             'in "NETWORK"_"STATION" format and "selector" a space separated '
-             'list of "LOCATION""CHANNEL", e.g. '
-             '"IU_KONO:BHE BHN,MN_AQU:HH?.D".')
-    parser.add_argument(
-        '--scale', type=int, help='the scale to apply on data ex:50000', required=False)
+    
+    p = configargparse.ArgParser(default_config_files=['/*.txt'], prog='seedlink_plotter',
+                                 description='Plot a realtime seismogram of a station',
+                                 formatter_class=ArgumentDefaultsHelpFormatter)
 
-    # Real-time parameters
-    parser.add_argument('--seedlink_server', type=str,
-                        help='the seedlink server to connect to with port. "\
-                        "ex: rtserver.ipgp.fr:18000 ', required=True)
-    parser.add_argument(
-        '--x_scale', type=_parse_time_with_suffix_to_minutes,
-        help='the number of minute to plot per line'
-             ' The following suffixes can be used as well: "s" for seconds, '
-             '"m" for minutes, "h" for hours and "d" for days.',
-        default=60)
-    parser.add_argument('-b', '--backtrace_time',
-                        help='the number of seconds to plot (3600=1h,86400=24h). The '
+    p.add('-c', '--my_config', required=True, is_config_file=True, help='config file path')
+    
+    p.add('-s', '--seedlink_streams', type=str,
+          help='The seedlink stream selector string. It has the format '
+               '"stream1[:selectors1],stream2[:selectors2],...", with "stream" '
+               'in "NETWORK"_"STATION" format and "selector" a space separated '
+               'list of "LOCATION""CHANNEL", e.g. '
+               '"IU_KONO:BHE BHN,MN_AQU:HH?.D".', dest="seedlink_streams")
+    p.add_argument('--station_clients', default="EMSC", type=str,
+                   help='specifies the client used to retrieve information for each station.'
+                        'If too few or too much are given it only takes the first one.'
+                        'Used for correcting event time and removing instrument response.'
+                        'If none is give the default is "EMSC"')
+    p.add_argument('--equal_scale', action='store_true',
+                   help='True if a all plots in multiple plots should be scaled the same way.',
+                   dest="equal_scale")
+    p.add_argument('--relative_scale', action='store_true',
+                   help='True if a relative scale should be applied.', dest="relative_scale")
+    p.add_argument('--scale', type=float,
+                   help='The scale to apply on data ex:50000, if relative scale is' 
+                        'active scale is the factor to multiply this relative value with.', dest="scale")
+    p.add_argument('--seedlink_server', type=str,
+                   help='the seedlink server to connect to with port. "'
+                        '"ex: rtserver.ipgp.fr:18000 ')
+    p.add_argument('--update_time',
+                   help='time in seconds between each graphic update.'
+                        ' The following suffixes can be used as well: "s" for seconds, '
+                        '"m" for minutes, "h" for hours and "d" for days.',
+                   type=_parse_time_with_suffix_to_seconds)
+    p.add_argument('--events_criterias', default=None, type=str,
+                   help='plot events using obspy.neries, '
+                        'Specify: event_criteria1; event_criteria2; ...'
+                        'event_criteria1: Minimum_Magnitude, Maximum_magnitude, Minimum_Radius, Maximum_Radius'
+                        'if no events should show up: None')
+    p.add_argument('--events_clients', default="EMSC", type=str,
+                   help='specifies the client used to retrieve information for each event criteria.'
+                        'If too few or too much are given it only takes the first one.'
+                        'If none is give the default is "EMSC". No spaces in between !!')
+    p.add_argument('--events_update_time',
+                   help='time in minutes between each event data update. '
+                        ' The following suffixes can be used as well: "s" for seconds, '
+                        '"m" for minutes, "h" for hours and "d" for days.',
+                   type=_parse_time_with_suffix_to_minutes)
+    p.add_argument('-b', '--backtrace_time',
+                   help='the number of seconds to plot (3600=1h,86400=24h). The '
                         'following suffixes can be used as well: "m" for minutes, '
-                        '"h" for hours and "d" for days.', required=True,
-                        type=_parse_time_with_suffix_to_seconds)
-    parser.add_argument('--x_position', type=int,
-                        help='the x position of the graph', required=False, default=0)
-    parser.add_argument('--y_position', type=int,
-                        help='the y position of the graph', required=False, default=0)
-    parser.add_argument(
-        '--x_size', type=int, help='the x size of the graph', required=False, default=800)
-    parser.add_argument(
-        '--y_size', type=int, help='the y size of the graph', required=False, default=600)
-    parser.add_argument(
-        '--title_size', type=int, help='the title size of each station in multichannel', required=False, default=10)
-    parser.add_argument(
-        '--time_legend_size', type=int, help='the size of time legend in multichannel', required=False, default=10)
-    parser.add_argument(
-        '--tick_format', type=str, help='the tick format of time legend ', required=False, default=None)
-    parser.add_argument(
-        '--time_tick_nb', type=int, help='the number of time tick', required=False)
-    parser.add_argument(
-        '--without-decoration', required=False, action='store_true',
+                        '"h" for hours and "d" for days.',
+                   type=_parse_time_with_suffix_to_seconds)
+    p.add_argument('--x_scale', type=_parse_time_with_suffix_to_minutes,
+                   help='the number of minute to plot per line'
+                        ' The following suffixes can be used as well: "s" for seconds, '
+                        '"m" for minutes, "h" for hours and "d" for days.')
+    p.add_argument('--x_position', type=int,
+                   help='the x position of the graph')
+    p.add_argument('--y_position', type=int,
+                   help='the y position of the graph')
+    p.add_argument('--x_size', type=int, help='the x size of the graph')
+    p.add_argument('--y_size', type=int, help='the y size of the graph')
+    p.add_argument('--title_size', type=int,
+                   help='the title size of each station in multichannel')
+    p.add_argument('--time_legend_size', type=int,
+                   help='the size of time legend in multichannel')
+    p.add_argument('--tick_format', type=str,
+                   help='the tick format of time legend ')
+    p.add_argument('--time_tick_nb', type=int,
+                   help='the number of time tick')
+    p.add_argument(
+        '--without-decoration',   action='store_true',
         help=('the graph window will have no decorations. that means the '
               'window is not controlled by the window manager and can only '
               'be closed by killing the respective process.'))
-    parser.add_argument(
-        '--line_plot', help='regular real time plot for single station', required=False, action='store_true')
-    parser.add_argument(
-        '--rainbow', help='', required=False, action='store_true')
-    parser.add_argument(
-        '--nb_rainbow_colors', help='the numbers of colors for rainbow mode', required=False, default=10)
-    parser.add_argument(
-        '--update_time',
-        help='time in seconds between each graphic update.'
-        ' The following suffixes can be used as well: "s" for seconds, '
-        '"m" for minutes, "h" for hours and "d" for days.',
-        required=False, default=10,
-        type=_parse_time_with_suffix_to_seconds)
-    parser.add_argument('--events', required=False, default=None, type=float,
-                        help='plot events using obspy.neries, specify minimum magnitude')
-    parser.add_argument(
-        '--events_update_time', required=False, default=10,
-        help='time in minutes between each event data update. '
-             ' The following suffixes can be used as well: "s" for seconds, '
-             '"m" for minutes, "h" for hours and "d" for days.',
-        type=_parse_time_with_suffix_to_minutes)
-    parser.add_argument('-f', '--fullscreen', default=False,
-                        action="store_true",
-                        help='set to full screen on startup')
-    parser.add_argument('-v', '--verbose', default=False,
-                        action="store_true", dest="verbose",
-                        help='show verbose debugging output')
-    parser.add_argument('--force', default=False, action="store_true",
-                        help='skip warning message and confirmation prompt '
-                             'when opening a window without decoration')
-    # parse the arguments
-    args = parser.parse_args()
+    p.add_argument('--line_plot', help='regular real time plot for single station',
+                   action='store_true')
+    p.add_argument('--rainbow', help='', action='store_true')
+    p.add_argument('--nb_rainbow_colors', help='the numbers of colors for rainbow mode')
+    p.add_argument('-f', '--fullscreen', default=False,
+                   action="store_true",
+                   help='set to full screen on startup')
+    p.add_argument('-v', '--verbose', default=False,
+                   action="store_true", dest="verbose",
+                   help='show verbose debugging output')
+    p.add_argument('--force', default=False, action="store_true",
+                   help="skip warning message and confirmation prompt "
+                        "when opening a window without decoration")
+    p.add_argument('--remove_response', default=False, action="store_true",
+                   help='Trys to remove the instrument response')
+    
+    args = p.parse_args()
+    
+    if args.tick_format == "None":
+        args.tick_format = None
 
+    # converts the "station_clients" to a usable list
+    if args.station_clients == "None" or args.station_clients is None:
+        args.station_clients = ["EMSC"]
+    else:
+        # converts the string "list" to an actual list with data type float for each element
+        args.station_clients = list(map(str, args.station_clients.split(",")))
+
+    # converts the "event_clients" to a usable list
+    if args.events_clients == "None" or args.events_clients is None:
+        args.events_clients = ["EMSC"]
+    else:
+        # converts the string "list" to an actual list with data type float for each element
+        args.events_clients = list(map(str, args.events_clients.split(",")))
+
+    # converts the "events_criterias" to a usable list
+    if args.events_criterias == "None" or args.events_criterias is None:
+        args.events_criterias = []
+    else:    
+        # converts the string "list" to an actual list with data type float for each element
+        args.events_criterias = args.events_criterias.split(";")
+        args.events_criterias = [list(map(float, x.split(","))) for x in args.events_criterias]
+    
+    print("=================================================================")
+    print(args)
+    print("=================================================================")
     if args.verbose:
         loglevel = logging.DEBUG
     else:
@@ -660,7 +797,7 @@ def main():
         seedlink_client.slconn.set_sl_address(args.seedlink_server)
     seedlink_client.multiselect = args.seedlink_streams
 
-    # tes if drum plot or line plot
+    # test if drum plot or line plot
     if any([x in args.seedlink_streams for x in ", ?*"]) or args.line_plot:
         drum_plot = False
         if args.time_tick_nb is None:
@@ -680,14 +817,13 @@ def main():
     seedlink_client.begin_time = (now - args.backtrace_time).format_seedlink()
 
     seedlink_client.initialize()
-    ids = seedlink_client.getTraceIDs()
+    args.ids = seedlink_client.getTraceIDs()
     # start cl in a thread
     thread = threading.Thread(target=seedlink_client.run)
     thread.setDaemon(True)
     thread.start()
-
     # start another thread for event updating if requested
-    if args.events is not None:
+    if len(args.events_criterias) > 0:
         event_updater = EventUpdater(
             stream=stream, events=events, myargs=args, lock=lock)
         thread = threading.Thread(target=event_updater.run)
@@ -699,8 +835,9 @@ def main():
 
     master = SeedlinkPlotter(stream=stream, events=events, myargs=args,
                              lock=lock, drum_plot=drum_plot,
-                             trace_ids=ids)
+                             trace_ids=args.ids)
     master.mainloop()
+
 
 if __name__ == '__main__':
     main()

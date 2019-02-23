@@ -4,7 +4,8 @@ INSTALL_REQUIRES = [
     'numpy',
     'scipy',
     'matplotlib>=1.3.0',
-    'obspy>=0.9.0']
+    'obspy>=0.9.0',
+    'configargparse']
 
 setup(
     name="seedlink-plotter",
