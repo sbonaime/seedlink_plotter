@@ -463,6 +463,26 @@ class EventUpdater():
         self.events = events
         self.args = myargs
         self.lock = lock
+
+        self.model = TauPyModel(model="iasp91")
+        # get the coordinates of the station
+        splitted_ids = [x.split(".") for x in self.args.ids]
+        # initialize the event clients
+        self.event_clients = []
+        for client in self.args.events_clients:
+            self.event_clients.append(Client(client))
+        # use seedlink id to get network, station, location and channel
+        try:
+            client = Client(self.args.station_clients[0])
+            station_inventory = client.get_stations(network=splitted_ids[0][0],
+                                                    station=splitted_ids[0][1],
+                                                    channel=splitted_ids[0][3],
+                                                    location=splitted_ids[0][2])
+            self.station_latitude = station_inventory[0][0].latitude
+            self.station_longitude = station_inventory[0][0].longitude
+        except Exception as error:
+            print(error)
+
         warn_msg = "The resource identifier already exists and points to " + \
                    "another object. It will now point to the object " + \
                    "referred to by the new resource identifier."
@@ -500,56 +520,40 @@ class EventUpdater():
         
         events = Catalog()
 
-        # get the coordinates of the station
-        splitted_ids = [x.split(".") for x in self.args.ids]
-        # use seedlink id to get network, station, location and channel
-        for client in ["iris-federator", "eida-routing"]:
-            try:
-                Cli = RoutingClient(client)
-                station_inventory = Cli.get_stations(network=splitted_ids[0][0],
-                                                     station=splitted_ids[0][1],
-                                                     channel=splitted_ids[0][3],
-                                                     location=splitted_ids[0][2])
-                
-                station_latitude = station_inventory[0][0].latitude
-                station_longitude = station_inventory[0][0].longitude 
-                break
-            except:
-                pass
-
-        # search for events fullfilling each criteria
-        for criteria in self.args.events_criteria:
-            print("Search for events with criteria " + str(criteria))
+        # search for events fulfilling each criteria
+        for i, criteria in enumerate(self.args.events_criterias):
+            if len(self.args.events_criterias) != len(self.args.events_clients):
+                i = 0
+            print("Search for events with criteria " + str(criteria) + " with client: "
+                  + str(self.args.events_clients[i]))
             temp_catalog = Catalog()
-            for client in URL_MAPPINGS.keys():
-                try:
-                    client = Client(client)
-                    
-                    # get all events within a radius (in deg) around the station with a minimum magnitude
-                    t = client.get_events(starttime=start, endtime=end,
-                                       minmagnitude=criteria[0],
-                                       maxmagnitude=criteria[1],
-                                       latitude=station_latitude,
-                                       longitude=station_longitude,
-                                       minradius=criteria[2],
-                                       maxradius=criteria[3])
-                    if t.count() > temp_catalog.count():
-                        temp_catalog = t
-                except:
-                    pass
+            try:
+                # get all events within a radius (in deg) around the station with a minimum magnitude
+                t = self.event_clients[i].get_events(starttime=start, endtime=end,
+                                                     minmagnitude=criteria[0],
+                                                     maxmagnitude=criteria[1],
+                                                     latitude=self.station_latitude,
+                                                     longitude=self.station_longitude,
+                                                     minradius=criteria[2],
+                                                     maxradius=criteria[3])
+                if t.count() > temp_catalog.count():
+                    temp_catalog = t
+            except Exception as error:
+                print(error)
                 
             events.extend(temp_catalog)
             if temp_catalog.count() == 0:
                 print("No events found for the current settings " + str(criteria) + "\n")
             else:
-                print(str(temp_catalog.count()) + " events found")
+                print(str(temp_catalog.count()) + " events found \n")
 
         # corrects the time to be the arrival time and not the local event time
         if events.count() > 0:
             try:
-                events = self.event_time_to_arrival_time(events, station_latitude, station_longitude)
-            except:
-                print("Correcting all events not possible")
+                events = self.event_time_to_arrival_time(events, self.station_latitude, self.station_longitude)
+            except Exception as error:
+                print("Correcting all events not possible because of: \n")
+                print(error)
         return events
 
     def update_events(self, events):
@@ -566,22 +570,18 @@ class EventUpdater():
         """
         for event in range(len(events)):
             try:
-                dist_event_to_station = obspy.taup.taup_geo.calc_dist(source_latitude_in_deg=events[event].origins[0].latitude,
-                                                                      source_longitude_in_deg=events[event].origins[0].longitude,
-                                                                      receiver_latitude_in_deg=lat,
-                                                                      receiver_longitude_in_deg=long,
-                                                                      radius_of_planet_in_km=6371,
-                                                                      flattening_of_planet=0)
-                
-                model = TauPyModel(model="iasp91")
-                arrivals = model.get_travel_times(source_depth_in_km=events[event].origins[0].depth / 1000,
-                                                  distance_in_degree=dist_event_to_station)
-                
+                distance = obspy.taup.taup_geo.calc_dist(source_latitude_in_deg=events[event].origins[0].latitude,
+                                                         source_longitude_in_deg=events[event].origins[0].longitude,
+                                                         receiver_latitude_in_deg=lat,
+                                                         receiver_longitude_in_deg=long,
+                                                         radius_of_planet_in_km=6371,
+                                                         flattening_of_planet=0)
+                arrivals = self.model.get_travel_times(source_depth_in_km=events[event].origins[0].depth / 1000,
+                                                       distance_in_degree=distance)
                 events[event].origins[0].time = events[event].origins[0].time + arrivals[0].time
-           
-            except:
-                print("Correcting event " + str(event) + "not possible \n")
-            
+            except Exception as error:
+                print("Correcting event " + str(event) + "not possible " + "beacuse of: \n")
+                print(error)
         return events
             
 
@@ -658,31 +658,36 @@ def main():
                'in "NETWORK"_"STATION" format and "selector" a space separated '
                'list of "LOCATION""CHANNEL", e.g. '
                '"IU_KONO:BHE BHN,MN_AQU:HH?.D".', dest="seedlink_streams")
-    
+    p.add_argument('--station_clients', default="EMSC", type=str,
+                   help='specifies the client used to retrieve information for each station.'
+                        'If too few or too much are given it only takes the first one.'
+                        'Used for correcting event time and removing instrument response.'
+                        'If none is give the default is "EMSC"')
     p.add_argument('--equal_scale', action='store_true',
                    help='True if a all plots in multiple plots should be scaled the same way.',
                    dest="equal_scale")
-
     p.add_argument('--relative_scale', action='store_true',
                    help='True if a relative scale should be applied.', dest="relative_scale")
-
     p.add_argument('--scale', type=float,
                    help='The scale to apply on data ex:50000, if relative scale is' 
                         'active scale is the factor to multiply this relative value with.', dest="scale")
-        
     p.add_argument('--seedlink_server', type=str,
                    help='the seedlink server to connect to with port. "'
                         '"ex: rtserver.ipgp.fr:18000 ')
-    
     p.add_argument('--update_time',
                    help='time in seconds between each graphic update.'
                         ' The following suffixes can be used as well: "s" for seconds, '
                         '"m" for minutes, "h" for hours and "d" for days.',
                    type=_parse_time_with_suffix_to_seconds)
-    p.add_argument('--events_criteria', default=None, type=str,
+    p.add_argument('--events_criterias', default=None, type=str,
                    help='plot events using obspy.neries, '
-                        'specify [Minimum_Magnitude, Maximum_magnitude,Minimum_Radius, Maximum_Radius]')
-    
+                        'Specify: event_criteria1; event_criteria2; ...'
+                        'event_criteria1: Minimum_Magnitude, Maximum_magnitude, Minimum_Radius, Maximum_Radius'
+                        'if no events should show up: None')
+    p.add_argument('--events_clients', default="EMSC", type=str,
+                   help='specifies the client used to retrieve information for each event criteria.'
+                        'If too few or too much are given it only takes the first one.'
+                        'If none is give the default is "EMSC". No spaces in between !!')
     p.add_argument('--events_update_time',
                    help='time in minutes between each event data update. '
                         ' The following suffixes can be used as well: "s" for seconds, '
@@ -693,7 +698,6 @@ def main():
                         'following suffixes can be used as well: "m" for minutes, '
                         '"h" for hours and "d" for days.',
                    type=_parse_time_with_suffix_to_seconds)
-    
     p.add_argument('--x_scale', type=_parse_time_with_suffix_to_minutes,
                    help='the number of minute to plot per line'
                         ' The following suffixes can be used as well: "s" for seconds, '
@@ -737,13 +741,28 @@ def main():
     
     if args.tick_format == "None":
         args.tick_format = None
-        
-    if args.events_criteria == "None" or args.events_criteria is None:
-        args.events_criteria = []
+
+    # converts the "station_clients" to a usable list
+    if args.station_clients == "None" or args.station_clients is None:
+        args.station_clients = ["EMSC"]
+    else:
+        # converts the string "list" to an actual list with data type float for each element
+        args.station_clients = list(map(str, args.station_clients.split(",")))
+
+    # converts the "event_clients" to a usable list
+    if args.events_clients == "None" or args.events_clients is None:
+        args.events_clients = ["EMSC"]
+    else:
+        # converts the string "list" to an actual list with data type float for each element
+        args.events_clients = list(map(str, args.events_clients.split(",")))
+
+    # converts the "events_criterias" to a usable list
+    if args.events_criterias == "None" or args.events_criterias is None:
+        args.events_criterias = []
     else:    
         # converts the string "list" to an actual list with data type float for each element
-        args.events_criteria = args.events_criteria.split(";")
-        args.events_criteria = [list(map(float, x.split(","))) for x in args.events_criteria]
+        args.events_criterias = args.events_criterias.split(";")
+        args.events_criterias = [list(map(float, x.split(","))) for x in args.events_criterias]
     
     print("=================================================================")
     print(args)
@@ -798,14 +817,13 @@ def main():
     seedlink_client.begin_time = (now - args.backtrace_time).format_seedlink()
 
     seedlink_client.initialize()
-    ids = seedlink_client.getTraceIDs()
+    args.ids = seedlink_client.getTraceIDs()
     # start cl in a thread
     thread = threading.Thread(target=seedlink_client.run)
     thread.setDaemon(True)
     thread.start()
-
     # start another thread for event updating if requested
-    if args.events_criteria is not None:
+    if len(args.events_criterias) > 0:
         event_updater = EventUpdater(
             stream=stream, events=events, myargs=args, lock=lock)
         thread = threading.Thread(target=event_updater.run)
@@ -817,7 +835,7 @@ def main():
 
     master = SeedlinkPlotter(stream=stream, events=events, myargs=args,
                              lock=lock, drum_plot=drum_plot,
-                             trace_ids=ids)
+                             trace_ids=args.ids)
     master.mainloop()
 
 
