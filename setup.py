@@ -3,18 +3,19 @@ from setuptools import setup
 INSTALL_REQUIRES = [
     'numpy',
     'scipy',
-    'matplotlib>=1.3.0',
-    'obspy>=0.9.0']
+    'matplotlib>=2.0.0',
+    'obspy>=1.3.0']
 
 setup(
     name="seedlink-plotter",
-    version="0.1.0",
+    version="0.2.0",
     description="Plot data acquired in realtime in from a seedlink server.",
     author="Sebastien Bonaime, Lion Krischer, Tobias Megies",
     author_email="bonaime@ipgp.fr",
     url="https://github.com/bonaime/seedlink_plotter",
     download_url="https://github.com/bonaime/seedlink_plotter.git",
     install_requires=INSTALL_REQUIRES,
+    python_requires='>3.7.0',
     keywords=["Seedlink", "ObsPy", "Seismology", "Plotting", "Realtime"],
     packages=["seedlink_plotter"],
     package_data={'seedlink_plotter': ['favicon.gif']},

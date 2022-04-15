@@ -6,12 +6,8 @@ import matplotlib
 matplotlib.use("TkAgg")
 matplotlib.rc('figure.subplot', hspace=0)
 matplotlib.rc('font', family="monospace")
-try:
-    # Py3
-    import tkinter
-except ImportError:
-    # Py2
-    import Tkinter as tkinter
+import tkinter
+
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
 from matplotlib.ticker import MaxNLocator
@@ -30,23 +26,13 @@ import time
 import warnings
 import os
 import sys
-try:
-    # Py3
-    from urllib.request import URLError
-except ImportError:
-    # Py2
-    from urllib2 import URLError
+from urllib.request import URLError
 import logging
 import numpy as np
 
 
-# ugly but simple Python 2/3 compat
-if sys.version_info.major < 3:
-    range_func = xrange
-    input_func = raw_input
-else:
-    range_func = range
-    input_func = input
+range_func = range
+input_func = input
 
 
 OBSPY_VERSION = [int(x) for x in OBSPY_VERSION.split(".")[:2]]
@@ -62,17 +48,11 @@ if OBSPY_VERSION < [0, 10]:
         "the memory leak (see "
         "https://github.com/bonaime/seedlink_plotter/issues/7).")
     warnings.warn(warning_msg)
-# Check if OBSPY_VERSION < 0.11
-if OBSPY_VERSION < [0, 11]:
-    # 0.10.x
-    from obspy.seedlink.slpacket import SLPacket
-    from obspy.seedlink.slclient import SLClient
-    from obspy.fdsn import Client
-else:
-    # >= 0.11.0
-    from obspy.clients.seedlink.slpacket import SLPacket
-    from obspy.clients.seedlink import SLClient
-    from obspy.clients.fdsn import Client
+    sys.exit()
+
+from obspy.clients.seedlink.slpacket import SLPacket
+from obspy.clients.seedlink import SLClient
+from obspy.clients.fdsn import Client
 
 # Compatibility checks
 # UTCDateTime
@@ -198,7 +178,7 @@ class SeedlinkPlotter(tkinter.Tk):
             if not stream:
                 raise Exception("Empty stream for plotting")
 
-            if self.drum_plot or OBSPY_VERSION < [0, 10]:
+            if self.drum_plot :
                 stream.merge()
                 stream.trim(starttime=self.start_time, endtime=self.stop_time,
                             pad=True, nearest_sample=False)
@@ -267,19 +247,15 @@ class SeedlinkPlotter(tkinter.Tk):
                 ax.set_axis_bgcolor("0.8")
         for id_, ax in zip(self.ids, fig.axes):
             ax.set_title("")
-            if OBSPY_VERSION < [0, 10]:
-                ax.text(0.1, 0.9, id_, va="top", ha="left",
-                        transform=ax.transAxes, bbox=bbox,
-                        size=self.args.title_size)
+    
+            try:
+                text = ax.texts[0]
+            # we should always have a single text, which is the stream
+            # label of the axis, but catch index errors just in case
+            except IndexError:
+                pass
             else:
-                try:
-                    text = ax.texts[0]
-                # we should always have a single text, which is the stream
-                # label of the axis, but catch index errors just in case
-                except IndexError:
-                    pass
-                else:
-                    text.set_fontsize(self.args.title_size)
+                text.set_fontsize(self.args.title_size)
             xlabels = ax.get_xticklabels()
             ylabels = ax.get_yticklabels()
             plt.setp(ylabels, ha="left", path_effects=path_effects)
@@ -288,9 +264,7 @@ class SeedlinkPlotter(tkinter.Tk):
             if ax is fig.axes[-1]:
                 plt.setp(
                     xlabels, va="bottom", size=self.args.time_legend_size, bbox=bbox)
-                if OBSPY_VERSION < [0, 10]:
-                    plt.setp(xlabels[:1], ha="left")
-                    plt.setp(xlabels[-1:], ha="right")
+
                 ax.xaxis.set_tick_params(pad=-pad)
             # all other axes
             else:
@@ -310,9 +284,8 @@ class SeedlinkPlotter(tkinter.Tk):
                         ax.set_facecolor("#ff6666")
                     else:
                         ax.set_axis_bgcolor("#ff6666")
-        if OBSPY_VERSION >= [0, 10]:
-            fig.axes[0].set_xlim(right=date2num(self.stop_time.datetime))
-            fig.axes[0].set_xlim(left=date2num(self.start_time.datetime))
+        fig.axes[0].set_xlim(right=date2num(self.stop_time.datetime))
+        fig.axes[0].set_xlim(left=date2num(self.start_time.datetime))
         if len(fig.axes) > 5:
             bbox["alpha"] = 0.6
         fig.text(0.99, 0.97, self.stop_time.strftime("%Y-%m-%d %H:%M:%S UTC"),
@@ -347,7 +320,7 @@ class SeedlinkUpdater(SLClient):
 
     def __init__(self, stream, myargs=None, lock=None):
         # loglevel NOTSET delegates messages to parent logger
-        super(SeedlinkUpdater, self).__init__(loglevel="NOTSET")
+        super(SeedlinkUpdater, self).__init__()
         self.stream = stream
         self.lock = lock
         self.args = myargs
@@ -409,17 +382,11 @@ class SeedlinkUpdater(SLClient):
         fetch data for.
         """
         ids = []
-        if OBSPY_VERSION < [1, 0]:
-            streams = self.slconn.getStreams()
-        else:
-            streams = self.slconn.get_streams()
+        streams = self.slconn.get_streams()
         for stream in streams:
             net = stream.net
             sta = stream.station
-            if OBSPY_VERSION < [1, 0]:
-                selectors = stream.getSelectors()
-            else:
-                selectors = stream.get_selectors()
+            selectors = stream.get_selectors()
             for selector in selectors:
                 if len(selector) == 3:
                     loc = ""
@@ -654,10 +621,7 @@ def main():
 
     # cl is the seedlink client
     seedlink_client = SeedlinkUpdater(stream, myargs=args, lock=lock)
-    if OBSPY_VERSION < [1, 0]:
-        seedlink_client.slconn.setSLAddress(args.seedlink_server)
-    else:
-        seedlink_client.slconn.set_sl_address(args.seedlink_server)
+    seedlink_client.slconn.set_sl_address(args.seedlink_server)
     seedlink_client.multiselect = args.seedlink_streams
 
     # tes if drum plot or line plot
