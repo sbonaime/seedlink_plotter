@@ -8,7 +8,7 @@ INSTALL_REQUIRES = [
 
 setup(
     name="seedlink-plotter",
-    version="0.2.0",
+    version="0.2.1",
     description="Plot data acquired in realtime in from a seedlink server.",
     author="Sebastien Bonaime, Lion Krischer, Tobias Megies",
     author_email="bonaime@ipgp.fr",
