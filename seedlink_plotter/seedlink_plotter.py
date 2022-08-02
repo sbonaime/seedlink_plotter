@@ -537,12 +537,12 @@ def main():
         help='the number of minute to plot per line'
              ' The following suffixes can be used as well: "s" for seconds, '
              '"m" for minutes, "h" for hours and "d" for days.',
-        default=60)
+        default='60m')
     parser.add_argument('-b', '--backtrace_time',
                         help='the number of seconds to plot (3600=1h,86400=24h). The '
                         'following suffixes can be used as well: "m" for minutes, '
-                        '"h" for hours and "d" for days.', required=True,
-                        type=_parse_time_with_suffix_to_seconds)
+                        '"h" for hours and "d" for days. (default: 60m) ', required=True,
+                        type=_parse_time_with_suffix_to_seconds,default='24h')
     parser.add_argument('--x_position', type=int,
                         help='the x position of the graph', required=False, default=0)
     parser.add_argument('--y_position', type=int,
